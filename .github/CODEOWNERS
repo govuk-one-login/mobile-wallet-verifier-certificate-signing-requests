@@ -1,0 +1,4 @@
+# This is the CODEOWNERS file. These owners will be the default owners for everything in the mobile-wallet-verifier-certificate-signing-requests repository.
+# The following will be requested for review when someone opens a pull request.
+
+* @govuk-one-login/mobile-wallet-verifier-ca @govuk-one-login/mobile-leads
