@@ -1,0 +1,56 @@
+# Ignore JS compiled output files
+dist/
+*.js
+*.js.map
+*.d.ts
+
+# Ignore node_modules
+node_modules/
+
+# Logs
+*.log
+logs/
+
+# Terraform
+*.tfstate
+*.tfstate.*
+# *.tfvars
+!*.tfvars.example
+# !default.auto.tfvars
+.terraform/
+.terraform.lock.hcl
+crash.log
+crash.*.log
+*.tfplan
+*.tfplan.*
+*-tfplan
+*plan.out
+.terraformrc
+terraform.rc
+terraform/stacks/base-stacks/tests
+terraform/stacks/sam-pipelines/tests
+terraform/stacks/base-stacks/reference_templates/*
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+/test-reports/
+
+
+# Mac
+.DS_Store
+.idea
+
+# AWS
+.aws/
+*.pem
+*.key
+
+# IDE
+.idea/
+*.iml
+*.swp
+*.swo
+.vscode/
+*~
