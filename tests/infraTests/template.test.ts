@@ -7,7 +7,7 @@ import {
   testRequiredSections,
   testEnvironmentParameter,
   testRequiredParameters,
-  testRequiredOutputs,
+  // testRequiredOutputs,
 } from './cfn-test-utils';
 
 describe('Application Infrastructure', () => {
@@ -43,6 +43,15 @@ describe('Application Infrastructure', () => {
         ]),
       ).not.toThrow();
     });
+
+    it('should have CsrRetentionDays parameter with default value of 366', () => {
+      const param = template.Parameters.CsrRetentionDays as Record<
+        string,
+        unknown
+      >;
+      expect(param).toBeDefined();
+      expect(param.Default).toBe(366);
+    });
   });
 
   describe('CsrReceived Bucket', () => {
@@ -65,7 +74,8 @@ describe('Application Infrastructure', () => {
     });
 
     it('should have all public access blocked', () => {
-      const publicAccessBlock = properties.PublicAccessBlockConfiguration as Record<string, unknown>;
+      const publicAccessBlock =
+        properties.PublicAccessBlockConfiguration as Record<string, unknown>;
       expect(publicAccessBlock.BlockPublicAcls).toBe(true);
       expect(publicAccessBlock.BlockPublicPolicy).toBe(true);
       expect(publicAccessBlock.IgnorePublicAcls).toBe(true);
@@ -74,18 +84,30 @@ describe('Application Infrastructure', () => {
 
     it('should have AES256 server-side encryption', () => {
       const encryption = properties.BucketEncryption as Record<string, unknown>;
-      const rules = encryption.ServerSideEncryptionConfiguration as Record<string, unknown>[];
-      const rule = rules[0].ServerSideEncryptionByDefault as Record<string, unknown>;
+      const rules = encryption.ServerSideEncryptionConfiguration as Record<
+        string,
+        unknown
+      >[];
+      const rule = rules[0].ServerSideEncryptionByDefault as Record<
+        string,
+        unknown
+      >;
       expect(rule.SSEAlgorithm).toBe('AES256');
     });
 
     it('should have versioning enabled', () => {
-      const versioning = properties.VersioningConfiguration as Record<string, unknown>;
+      const versioning = properties.VersioningConfiguration as Record<
+        string,
+        unknown
+      >;
       expect(versioning.Status).toBe('Enabled');
     });
 
     it('should have a lifecycle rule using CsrRetentionDays parameter', () => {
-      const lifecycle = properties.LifecycleConfiguration as Record<string, unknown>;
+      const lifecycle = properties.LifecycleConfiguration as Record<
+        string,
+        unknown
+      >;
       const rules = lifecycle.Rules as Record<string, unknown>[];
       expect(rules).toHaveLength(1);
       expect(rules[0].Id).toBe('CsrRetentionPolicy');
@@ -94,7 +116,10 @@ describe('Application Infrastructure', () => {
     });
 
     it('should have access logging configured', () => {
-      const logging = properties.LoggingConfiguration as Record<string, unknown>;
+      const logging = properties.LoggingConfiguration as Record<
+        string,
+        unknown
+      >;
       expect(logging.DestinationBucketName).toBeDefined();
       expect(logging.LogFilePrefix).toBe('s3-access-logs/');
     });

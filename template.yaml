@@ -62,9 +62,9 @@ Parameters:
     Default: AllAtOnce
 
   CsrRetentionDays:
-    Description: Number of days to retain CSRs
+    Description: Number of days to retain CSRs. Default is 1 year == 366 days (allowing for leap year)
     Type: Number
-    Default: 28
+    Default: 366
 
 Conditions:
   UsePermissionsBoundary: !Not
