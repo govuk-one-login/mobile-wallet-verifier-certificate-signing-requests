@@ -54,3 +54,6 @@ terraform/stacks/base-stacks/reference_templates/*
 *.swo
 .vscode/
 *~
+
+.aws-sam/
+samconfig.toml
