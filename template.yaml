@@ -281,3 +281,10 @@ Resources:
           Value: !Ref Environment
         - Key: Purpose
           Value: Store CSRs received from external DVS organisations
+
+Outputs:
+  CsrReceivedBucketName:
+    Description: Name of the S3 bucket to store CSRs received from external DVS organisations
+    Value: !Ref CsrReceivedBucket
+    Export:
+      Name: !Sub "${AWS::StackName}-CsrReceivedBucketName"
