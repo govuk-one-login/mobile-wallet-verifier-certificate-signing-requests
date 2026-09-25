@@ -1,0 +1,970 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: SAM application template for Verifier Certificate Authority backend
+
+Parameters:
+  Environment:
+    Description: The environment type
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - build
+      - staging
+      - integration
+      - prod
+
+  BaseAppStack:
+    Description: |
+      Name of the base-application stack (for CloudFormation imports).
+      Defaults to 'ca-base' or 'ca-base-pr-{pr-number}'.
+    Type: String
+    Default: 'ca-base'
+
+  MockBaseAppStack:
+    Description: |
+      Name of the base-application stack (for CloudFormation imports).
+      Defaults to 'ca-base' or 'ca-base-pr-{pr-number}'.
+    Type: String
+    Default: 'ca-base'
+
+  CodeSigningConfigArn:
+    Description: |
+      The ARN of the Code Signing Config to use, provided by the deployment pipeline
+    Type: String
+    Default: none
+
+  PermissionsBoundary:
+    Description: |
+      The ARN of the permissions boundary to apply to any role created by the template
+    Type: String
+    Default: none
+
+  VpcStackName:
+    Description: |
+      The stack name of the VPC where Verifier CA lambdas will be deployed
+    Type: String
+    Default: vpc
+
+  CaBackendApiParam:
+    Description: |
+      The backend Api prefix url
+    Type: String
+    Default: ca-backend-api
+
+  CloudFrontDistributionName:
+    Description: |
+      The name of the CloudFront distribution
+    Type: String
+    Default: cloudfront-distribution
+
+  # API Gateway Custom Domain Parameters
+  EnableCustomDomain:
+    Description: Whether to create a custom domain for API Gateway
+    Type: String
+    Default: 'true'
+    AllowedValues:
+      - 'true'
+      - 'false'
+
+  CustomDomainBasePath:
+    Description: |
+      The base path for the API mapping (empty string for root, or a path like 'v1')
+    Type: String
+    Default: ''
+
+  EnableWafAssociation:
+    Description: |
+      Whether to associate the Cloaking WAF WebACL with the API Gateway stage.
+      The Cloaking WAF blocks ALL requests that don't come from CloudFront.
+    Type: String
+    Default: 'true'
+    AllowedValues:
+      - 'true'
+      - 'false'
+
+  EnableMonitoring:
+    Description: |
+      Whether to create CloudWatch alarms and SNS topics for monitoring.
+      Set to 'false' for feature branch deployments to avoid SNS topic name conflicts.
+    Type: String
+    Default: 'true'
+    AllowedValues:
+      - 'true'
+      - 'false'
+
+  LambdaDeploymentPreference:
+    Description: |
+      Specifies the configuration to enable gradual Lambda deployments. Value can be 'AllAtOnce', a default deployment config, or name of custom DeploymentConfig.
+    Type: String
+    Default: AllAtOnce
+
+  CsrRetentionDays:
+    Description: Number of days to retain CSRs
+    Type: Number
+    Default: 28
+
+Conditions:
+  EgressLogsToSplunkUsingCsls: !Equals
+    - !Ref Environment
+    - prod
+
+  UsePermissionsBoundary: !Not
+    - !Equals
+      - !Ref PermissionsBoundary
+      - none
+
+  # Deployment preference conditions
+  IsIntegrationOrProd: !Or
+    - !Equals [!Ref Environment, integration]
+    - !Equals [!Ref Environment, prod]
+
+  UseCodeSigning: !Not
+    - !Equals
+      - !Ref CodeSigningConfigArn
+      - none
+
+  IsDevEnvironment: !Equals
+    - !Ref Environment
+    - dev
+
+  CreateMonitoringResources: !Equals
+    - !Ref EnableMonitoring
+    - 'true'
+
+  CreateAlarmsAndMonitoring: !And
+    - !Condition IsIntegrationOrProd
+    - !Condition CreateMonitoringResources
+
+  # Custom domain conditions
+  CreateCustomDomain: !Equals
+    - !Ref EnableCustomDomain
+    - 'true'
+
+  UseBasePath: !Not
+    - !Equals
+      - !Ref CustomDomainBasePath
+      - ''
+
+  AssociateWebACL: !And
+    - !Condition CreateCustomDomain
+    - !Equals
+      - !Ref EnableWafAssociation
+      - 'true'
+
+  # Mock resources condition - only deploy in dev and build
+  DeployMockResources: !Or
+    - !Equals [!Ref Environment, dev]
+    - !Equals [!Ref Environment, build]
+
+  DeployMockCustomDomainResources: !And
+    - !Condition CreateCustomDomain
+    - !Condition DeployMockResources
+
+Mappings:
+  EnvironmentVariables:
+    dev:
+      Algorithm: 'RS256'
+      AllowedAppIds: '["1:1111:ios:org.multipaz.identityreader", "1:1111:android:org.multipaz.identityreader"]'
+      Audience: '["projects/mock-verifier-app"]'
+      DynatraceSecretArn: arn:aws:secretsmanager:eu-west-2:216552277552:secret:DynatraceNonProductionVariables
+      FirebaseJwksUri: https://mock.verifier-ca.dev.account.gov.uk/mock-jwks
+      Issuer: https://mock.verifier-ca.dev.account.gov.uk/mock-jwks
+      LambdaLogLevel: DEBUG
+      MockJwtIssuer: https://mock.verifier-ca.dev.account.gov.uk/mock-jwks
+
+    build:
+      Algorithm: 'RS256'
+      AllowedAppIds: '["1:1111:ios:org.multipaz.identityreader", "1:1111:android:org.multipaz.identityreader"]'
+      Audience: '["projects/mock-verifier-app"]'
+      DynatraceSecretArn: arn:aws:secretsmanager:eu-west-2:216552277552:secret:DynatraceNonProductionVariables
+      FirebaseJwksUri: https://mock.verifier-ca.build.account.gov.uk/mock-jwks
+      Issuer: https://mock.verifier-ca.build.account.gov.uk/mock-jwks
+      LambdaLogLevel: INFO
+      MockJwtIssuer: https://mock.verifier-ca.build.account.gov.uk/mock-jwks
+
+    staging:
+      Algorithm: 'RS256'
+      AllowedAppIds: '["1:mockProjectId:ios:mockAppId", "1:mockProjectId:android:mockAppId"]'
+      Audience: '["mockProjectId"]'
+      DynatraceSecretArn: arn:aws:secretsmanager:eu-west-2:216552277552:secret:DynatraceNonProductionVariables
+      FirebaseJwksUri: https://firebaseappcheck.googleapis.com/v1/jwks
+      Issuer: https://mockIssuer.com/mockProjectId
+      LambdaLogLevel: INFO
+
+    integration:
+      Algorithm: 'RS256'
+      AllowedAppIds: '["1:mockProjectId:ios:mockAppId", "1:mockProjectId:android:mockAppId"]'
+      Audience: '["mockProjectId"]'
+      DynatraceSecretArn: arn:aws:secretsmanager:eu-west-2:216552277552:secret:DynatraceNonProductionVariables
+      FirebaseJwksUri: https://firebaseappcheck.googleapis.com/v1/jwks
+      Issuer: https://mockIssuer.com/mockProjectId
+      LambdaLogLevel: INFO
+
+    prod:
+      Algorithm: 'RS256'
+      AllowedAppIds: '["1:mockProjectId:ios:mockAppId", "1:mockProjectId:android:mockAppId"]'
+      Audience: '["mockProjectId"]'
+      DynatraceSecretArn: arn:aws:secretsmanager:eu-west-2:216552277552:secret:DynatraceProductionVariables
+      FirebaseJwksUri: https://firebaseappcheck.googleapis.com/v1/jwks
+      Issuer: https://mockIssuer.com/mockProjectId
+      LambdaLogLevel: INFO
+
+    CslsEgress:
+      build: arn:aws:logs:eu-west-2:885513274347:destination:csls_cw_logs_destination_prodpython-2
+      integration: arn:aws:logs:eu-west-2:885513274347:destination:csls_cw_logs_destination_prodpython-2
+      prod: arn:aws:logs:eu-west-2:885513274347:destination:csls_cw_logs_destination_prodpython-2
+      staging: arn:aws:logs:eu-west-2:885513274347:destination:csls_cw_logs_destination_prodpython-2
+
+Globals:
+  Function:
+    LoggingConfig:
+      LogFormat: JSON
+      ApplicationLogLevel: !FindInMap
+        - EnvironmentVariables
+        - !Ref Environment
+        - LambdaLogLevel
+      SystemLogLevel: !FindInMap
+        - EnvironmentVariables
+        - !Ref Environment
+        - LambdaLogLevel
+    Runtime: nodejs22.x
+    Architectures:
+      - arm64
+    PermissionsBoundary: !If
+      - UsePermissionsBoundary
+      - !Ref PermissionsBoundary
+      - !Ref AWS::NoValue
+    AutoPublishAlias: live
+    CodeSigningConfigArn: !If
+      - UseCodeSigning
+      - !Ref CodeSigningConfigArn
+      - !Ref AWS::NoValue
+    DeploymentPreference:
+      Enabled: !If [IsIntegrationOrProd, true, false]
+      Type: !If [IsIntegrationOrProd, !Ref Linear20PercentEvery1Minute, !Ref LambdaDeploymentPreference]
+      Role: !GetAtt CodeDeployServiceRole.Arn
+    Environment:
+      Variables:
+        POWERTOOLS_SERVICE_NAME: mobile-wallet-verifier-certificate-authority-backend
+
+Resources:
+  # ========================================
+  # MOCK SERVICES - For Testing & Development
+  # ========================================
+
+  # Mock Secrets Manager secrets for certificate generation
+  MockDeviceKeysSecret:
+    Type: AWS::SecretsManager::Secret
+    Condition: DeployMockResources
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      Name: !Sub '${AWS::StackName}-mock-device-keys'
+      Description: 'ECDSA P-384 key pair for mobile device CSR generation (mock - shared across iOS/Android)'
+      SecretString: !Sub |
+        {
+          "keyPair": {
+            "privateKeyPem": "PLACEHOLDER",
+            "publicKeyPem": "PLACEHOLDER"
+          }
+        }
+
+  MockFirebaseAppCheckKeysSecret:
+    Type: AWS::SecretsManager::Secret
+    Condition: DeployMockResources
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      Name: !Sub '${AWS::StackName}-mock-firebase-appcheck-keys'
+      Description: 'RSA 2048 key pair for Firebase App Check JWT signing (mock)'
+      SecretString: !Sub |
+        {
+          "keyPair": {
+            "privateKeyPem": "PLACEHOLDER",
+            "publicKeyPem": "PLACEHOLDER"
+          }
+        }
+
+  # Mock Services IAM Role
+  MockServicesRole:
+    Type: AWS::IAM::Role
+    Condition: DeployMockResources
+    Properties:
+      RoleName: !Sub '${AWS::StackName}-${Environment}-mock-services-role'
+      PermissionsBoundary: !If
+        - UsePermissionsBoundary
+        - !Ref PermissionsBoundary
+        - !Ref AWS::NoValue
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+      Policies:
+        - PolicyName: MockSecretsManagerAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                  - secretsmanager:CreateSecret
+                  - secretsmanager:UpdateSecret
+                Resource:
+                  - !Ref MockFirebaseAppCheckKeysSecret
+                  - !Ref MockDeviceKeysSecret
+
+  # Mock JWKS Service Lambda
+  MockJWKSServiceFunction:
+    Type: AWS::Serverless::Function
+    Condition: DeployMockResources
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Sourcemap: false
+        Target: es2022
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-${Environment}-mock-jwks'
+      CodeUri: ./
+      Handler: src/lambdas/mock-jwks/handler.handler
+      Role: !GetAtt MockServicesRole.Arn
+      Timeout: 60
+      DeploymentPreference:
+        Enabled: false
+      VpcConfig:
+        SecurityGroupIds:
+          - Fn::ImportValue: !Sub ${VpcStackName}-AWSServicesEndpointSecurityGroupId
+        SubnetIds:
+          - Fn::ImportValue: !Sub ${VpcStackName}-PrivateSubnetIdA
+          - Fn::ImportValue: !Sub ${VpcStackName}-PrivateSubnetIdB
+          - Fn::ImportValue: !Sub ${VpcStackName}-PrivateSubnetIdC
+      Environment:
+        Variables:
+          FIREBASE_APPCHECK_JWKS_SECRET: !Sub '${AWS::StackName}-mock-firebase-appcheck-keys'
+
+  MockJWKSServiceFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Condition: DeployMockResources
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${AWS::StackName}-mock-jwks-service
+      RetentionInDays: 30
+
+  # Mock Issue Cert Request Lambda
+  MockIssueCertRequestFunction:
+    Type: AWS::Serverless::Function
+    Condition: DeployMockResources
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Sourcemap: false
+        Target: es2022
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-${Environment}-mock-issue-cert-request'
+      CodeUri: ./
+      Handler: src/lambdas/mock-issue-cert-request/handler.handler
+      Role: !GetAtt MockServicesRole.Arn
+      Timeout: 60
+      DeploymentPreference:
+        Enabled: false
+      VpcConfig:
+        SecurityGroupIds:
+          - Fn::ImportValue: !Sub ${VpcStackName}-AWSServicesEndpointSecurityGroupId
+        SubnetIds:
+          - Fn::ImportValue: !Sub ${VpcStackName}-PrivateSubnetIdA
+          - Fn::ImportValue: !Sub ${VpcStackName}-PrivateSubnetIdB
+          - Fn::ImportValue: !Sub ${VpcStackName}-PrivateSubnetIdC
+      Environment:
+        Variables:
+          DEVICE_KEYS_SECRET: !Sub '${AWS::StackName}-mock-device-keys'
+          FIREBASE_APPCHECK_JWKS_SECRET: !Sub '${AWS::StackName}-mock-firebase-appcheck-keys'
+          MOCK_JWT_ISSUER: !FindInMap
+            - EnvironmentVariables
+            - !Ref Environment
+            - MockJwtIssuer
+
+  MockIssueCertRequestFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Condition: DeployMockResources
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${AWS::StackName}-mock-issue-cert-request
+      RetentionInDays: 30
+
+  # Mock API Gateway
+  MockServicesApi:
+    Type: AWS::Serverless::Api
+    Condition: DeployMockResources
+    Properties:
+      Name: !Sub ${AWS::StackName}-mock-services-api
+      Description: Mock services API for testing - JWKS and certificate generation
+      StageName: !Ref Environment
+      OpenApiVersion: 3.0.0
+      EndpointConfiguration:
+        Type: REGIONAL
+      DefinitionBody:
+        openapi: 3.0.0
+        info:
+          title: Mock Services API
+          version: 1.0.0
+        paths:
+          /mock-jwks:
+            get:
+              summary: Get JWKS for Firebase App Check verification
+              responses:
+                '200':
+                  description: JWKS response
+                  content:
+                    application/json:
+                      schema:
+                        type: object
+              x-amazon-apigateway-integration:
+                type: aws_proxy
+                httpMethod: POST
+                uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${MockJWKSServiceFunction.Arn}/invocations'
+          /mock-issue-cert-request:
+            get:
+              summary: Generate mock issue certificate request
+              responses:
+                '200':
+                  description: Mock certificate request
+                  content:
+                    application/json:
+                      schema:
+                        type: object
+              x-amazon-apigateway-integration:
+                type: aws_proxy
+                httpMethod: POST
+                uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${MockIssueCertRequestFunction.Arn}/invocations'
+
+    # Base Path Mapping for Public Domain - maps the same API to the public domain
+  MockApiGatewayPublicBasePathMapping:
+    Type: AWS::ApiGateway::BasePathMapping
+    Condition: DeployMockCustomDomainResources
+    Properties:
+      DomainName: !ImportValue
+        Fn::Sub: '${MockBaseAppStack}-ApiGatewayMockDomain'
+      RestApiId: !Ref MockServicesApi
+      Stage: !Ref MockServicesApi.Stage
+      BasePath: !If
+        - UseBasePath
+        - !Ref CustomDomainBasePath
+        - !Ref AWS::NoValue
+
+  # Lambda Permissions for API Gateway
+  MockJWKSServicePermission:
+    Type: AWS::Lambda::Permission
+    Condition: DeployMockResources
+    Properties:
+      FunctionName: !Ref MockJWKSServiceFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MockServicesApi}/*/*'
+
+  MockIssueCertRequestPermission:
+    Type: AWS::Lambda::Permission
+    Condition: DeployMockResources
+    Properties:
+      FunctionName: !Ref MockIssueCertRequestFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MockServicesApi}/*/*'
+
+  # ========================================
+  # PRODUCTION SERVICES
+  # ========================================
+
+  # Customer-managed KMS key for SNS encryption with CloudWatch permissions
+  WarningsChannelKMSKey:
+    Type: AWS::KMS::Key
+    Condition: CreateMonitoringResources
+    Properties:
+      Description: KMS key for SNS topic encryption with CloudWatch access
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: 'kms:*'
+            Resource: '*'
+          - Sid: Allow CloudWatch to use the key
+            Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action:
+              - kms:Decrypt
+              - kms:GenerateDataKey
+            Resource: '*'
+
+  WarningsChannel:
+    Type: AWS::SNS::Topic
+    Condition: CreateMonitoringResources
+    Properties:
+      TopicName: !Sub '${AWS::StackName}-warnings'
+      DisplayName: !Sub '${AWS::StackName} Warnings'
+      KmsMasterKeyId: !Ref WarningsChannelKMSKey
+
+  WarningsChannelPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Condition: CreateMonitoringResources
+    Properties:
+      Topics:
+        - !Ref WarningsChannel
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudWatchAlarmsToPublish
+            Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action:
+              - sns:Publish
+            Resource: !Ref WarningsChannel
+            Condition:
+              StringEquals:
+                'aws:SourceAccount': !Ref 'AWS::AccountId'
+
+  CodeDeployServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - codedeploy.amazonaws.com
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSCodeDeployRoleForLambda
+      PermissionsBoundary: !If [UsePermissionsBoundary, !Ref PermissionsBoundary, !Ref AWS::NoValue]
+
+  # Custom Deployment Config
+  Linear20PercentEvery1Minute:
+    Type: AWS::CodeDeploy::DeploymentConfig
+    Properties:
+      ComputePlatform: Lambda
+      DeploymentConfigName: !Sub ${AWS::StackName}-Linear20PercentEvery1Minute
+      TrafficRoutingConfig:
+        TimeBasedLinear:
+          LinearInterval: 1
+          LinearPercentage: 20
+        Type: TimeBasedLinear
+
+  IssueReaderCertServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${AWS::StackName}-${Environment}-issue-reader-cert-service-role'
+      PermissionsBoundary: !If
+        - UsePermissionsBoundary
+        - !Ref PermissionsBoundary
+        - !Ref AWS::NoValue
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+      Policies:
+        - PolicyName: ACMPCAAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - acm-pca:IssueCertificate
+                  - acm-pca:GetCertificate
+                Resource: !Sub '{{resolve:ssm:/${Environment}/GovCA/CertificateAuthorityArn}}'
+
+  IssueReaderCertServiceFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Sourcemap: false
+        Target: es2022
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-${Environment}-issue-reader-cert-service'
+      DeploymentPreference:
+        Alarms: !If
+          - CreateAlarmsAndMonitoring
+          - - !Ref IssueReaderCertServiceErrorAlarm
+          - []
+      CodeUri: ./
+      Handler: src/lambdas/issue-reader-cert-service/handler.handler
+      Role: !GetAtt IssueReaderCertServiceRole.Arn
+      Timeout: 15
+      VpcConfig:
+        SecurityGroupIds:
+          - Fn::ImportValue: !Sub ${VpcStackName}-AWSServicesEndpointSecurityGroupId
+        SubnetIds:
+          - Fn::ImportValue: !Sub ${VpcStackName}-ProtectedSubnetIdA
+          - Fn::ImportValue: !Sub ${VpcStackName}-ProtectedSubnetIdB
+          - Fn::ImportValue: !Sub ${VpcStackName}-ProtectedSubnetIdC
+      Environment:
+        Variables:
+          ALLOW_TEST_TOKENS: !If
+            - IsDevEnvironment
+            - 'true'
+            - 'false'
+          EXPECTED_ANDROID_PACKAGE_NAME: 'org.multipaz.identityreader'
+          FIREBASE_JWKS_URI: !FindInMap
+            - EnvironmentVariables
+            - !Ref Environment
+            - FirebaseJwksUri
+          ISSUER: !FindInMap
+            - EnvironmentVariables
+            - !Ref Environment
+            - Issuer
+          AUDIENCE: !FindInMap
+            - EnvironmentVariables
+            - !Ref Environment
+            - Audience
+          ALLOWED_APP_IDS: !FindInMap
+            - EnvironmentVariables
+            - !Ref Environment
+            - AllowedAppIds
+          ALGORITHM: !FindInMap
+            - EnvironmentVariables
+            - !Ref Environment
+            - Algorithm
+          CERTIFICATE_AUTHORITY_ARN: !Sub '{{resolve:ssm:/${Environment}/GovCA/CertificateAuthorityArn}}'
+
+  IssueReaderCertServiceFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${AWS::StackName}-issue-reader-cert-service
+      RetentionInDays: 30
+
+  IssueReaderCertServiceFunctionSubscriptionFilter:
+    Type: AWS::Logs::SubscriptionFilter
+    Properties:
+      DestinationArn: !FindInMap
+        - EnvironmentVariables
+        - CslsEgress
+        - !Ref Environment
+      FilterPattern: ''
+      LogGroupName: !Ref IssueReaderCertServiceFunctionLogGroup
+    Condition: EgressLogsToSplunkUsingCsls
+
+  IssueReaderCertServicePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref IssueReaderCertServiceFunction.Alias
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${CaBackendApi}/*/*'
+
+  CaBackendApi:
+    Type: AWS::Serverless::Api
+    DependsOn: ApiGatewayAccount
+    Properties:
+      Name: !Sub ${AWS::StackName}-${CaBackendApiParam}
+      Description: Regional API gateway for the verifier certificate authority service
+      StageName: !Ref Environment
+      OpenApiVersion: 3.0.0
+      TracingEnabled: true
+      AccessLogSetting:
+        DestinationArn: !GetAtt CaBackendApiAccessLogs.Arn
+        Format: '{ "requestId":"$context.requestId", "ip": "$context.identity.sourceIp", "caller":"$context.identity.caller", "user":"$context.identity.user","requestTime":"$context.requestTime", "httpMethod":"$context.httpMethod","resourcePath":"$context.resourcePath", "status":"$context.status","protocol":"$context.protocol", "responseLength":"$context.responseLength" }'
+      EndpointConfiguration:
+        Type: REGIONAL
+      MethodSettings:
+        - LoggingLevel: INFO
+          ResourcePath: /*
+          HttpMethod: '*'
+          DataTraceEnabled: false
+          MetricsEnabled: true
+          ThrottlingBurstLimit: 10
+          ThrottlingRateLimit: 10
+          CachingEnabled: true
+          CacheTtlInSeconds: 300
+          CacheDataEncrypted: true
+      DefinitionBody:
+        Fn::Transform:
+          Name: AWS::Include
+          Parameters:
+            Location: ./open-api-spec.yaml
+
+  CaBackendApiAccessLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/apigateway/${AWS::StackName}-${CaBackendApiParam}-access-logs
+      RetentionInDays: 30
+
+  ApiGatewayCloudWatchLogsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${AWS::StackName}-${Environment}-api-gateway-logs-role'
+      PermissionsBoundary: !If
+        - UsePermissionsBoundary
+        - !Ref PermissionsBoundary
+        - !Ref AWS::NoValue
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - apigateway.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: ApiGatewayLogsPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:DescribeLogGroups
+                  - logs:DescribeLogStreams
+                  - logs:PutLogEvents
+                  - logs:GetLogEvents
+                  - logs:FilterLogEvents
+                Resource: '*'
+
+  ApiGatewayAccount:
+    Type: AWS::ApiGateway::Account
+    Properties:
+      CloudWatchRoleArn: !GetAtt ApiGatewayCloudWatchLogsRole.Arn
+
+  # Base Path Mapping for Origin Domain
+  ApiGatewayBasePathMapping:
+    Type: AWS::ApiGateway::BasePathMapping
+    Condition: CreateCustomDomain
+    Properties:
+      DomainName: !ImportValue
+        Fn::Sub: '${BaseAppStack}-ApiGatewayOriginDomain'
+      RestApiId: !Ref CaBackendApi
+      Stage: !Ref CaBackendApi.Stage
+      BasePath: !If
+        - UseBasePath
+        - !Ref CustomDomainBasePath
+        - !Ref AWS::NoValue
+
+  # Base Path Mapping for Public Domain - maps the same API to the public domain
+  ApiGatewayPublicBasePathMapping:
+    Type: AWS::ApiGateway::BasePathMapping
+    Condition: CreateCustomDomain
+    Properties:
+      DomainName: !ImportValue
+        Fn::Sub: '${BaseAppStack}-ApiGatewayPublicDomain'
+      RestApiId: !Ref CaBackendApi
+      Stage: !Ref CaBackendApi.Stage
+      BasePath: !If
+        - UseBasePath
+        - !Ref CustomDomainBasePath
+        - !Ref AWS::NoValue
+
+  # WAF WebACL Association - Protects API Gateway with origin cloaking rules
+  # Ensures traffic only comes through CloudFront
+  ApiGatewayWebACLAssociation:
+    Type: AWS::WAFv2::WebACLAssociation
+    Condition: AssociateWebACL
+    DependsOn: ApiGatewayBasePathMapping
+    Properties:
+      ResourceArn: !Sub
+        - 'arn:aws:apigateway:${AWS::Region}::/restapis/${CaBackendApi}/stages/${ApiStage}'
+        - ApiStage: !Ref CaBackendApi.Stage
+      WebACLArn:
+        Fn::ImportValue: !Sub '${CloudFrontDistributionName}-CloakingOriginWebACLArn'
+
+  # CloudWatch Alarms for Canary Deployment
+  IssueReaderCertServiceErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: CreateAlarmsAndMonitoring
+    Properties:
+      AlarmName: !Sub '${AWS::StackName}-${Environment}-issue-reader-cert-service-errors'
+      AlarmDescription: |
+        Monitors errors for Issue Reader Certificate Service lambda.
+        Runbook: https://govukverify.atlassian.net/wiki/spaces/DCMAW/pages/6024003653/CA+Backend+Alarm+Runbook+Warnings
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref IssueReaderCertServiceFunction
+        - Name: ExecutedVersion
+          Value: !Ref IssueReaderCertServiceFunction.Version
+      AlarmActions:
+        - !Ref WarningsChannel
+      TreatMissingData: notBreaching
+
+  # API Gateway 4xx/5xx Alarms
+  ApiGateway4xxErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: CreateMonitoringResources
+    Properties:
+      AlarmName: !Sub '${AWS::StackName}-${Environment}-api-gateway-4xx-errors'
+      AlarmDescription: |
+        Monitors 4xx client errors for API Gateway.
+        Runbook: https://govukverify.atlassian.net/wiki/spaces/DCMAW/pages/6024003653/CA+Backend+Alarm+Runbook+Warnings
+      MetricName: 4XXError
+      Namespace: AWS/ApiGateway
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: ApiName
+          Value: !Sub '${AWS::StackName}-${CaBackendApiParam}'
+        - Name: Stage
+          Value: !Ref Environment
+      AlarmActions:
+        - !Ref WarningsChannel
+      TreatMissingData: notBreaching
+
+  ApiGateway5xxErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: CreateMonitoringResources
+    Properties:
+      AlarmName: !Sub '${AWS::StackName}-${Environment}-api-gateway-5xx-errors'
+      AlarmDescription: |
+        Monitors 5xx server errors for API Gateway.
+        Runbook: https://govukverify.atlassian.net/wiki/spaces/DCMAW/pages/6024003653/CA+Backend+Alarm+Runbook+Warnings
+      MetricName: 5XXError
+      Namespace: AWS/ApiGateway
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: ApiName
+          Value: !Sub '${AWS::StackName}-${CaBackendApiParam}'
+        - Name: Stage
+          Value: !Ref Environment
+      AlarmActions:
+        - !Ref WarningsChannel
+      TreatMissingData: notBreaching
+
+  CsrReceivedBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Sub "${AWS::AccountId}-${AWS::StackName}-csr-received"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      VersioningConfiguration:
+        Status: Enabled
+      LoggingConfiguration:
+        DestinationBucketName: !Sub "di-s3-access-logs-${AWS::AccountId}-${AWS::Region}"
+        LogFilePrefix: "s3-access-logs/"
+        TargetObjectKeyFormat:
+          PartitionedPrefix:
+            PartitionDateSource: EventTime
+      LifecycleConfiguration:
+        Rules:
+          - Id: CsrRetentionPolicy
+            Status: Enabled
+            ExpirationInDays: !Ref CsrRetentionDays
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerPreferred
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-CsrReceivedBucket"
+        - Key: Service
+          Value: verifier
+        - Key: Source
+          Value: govuk-one-login/mobile-wallet-verifier-ca-back/application.yaml
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Purpose
+          Value: Store CSRs received from external DVS organisations
+
+Outputs:
+  ApiGatewayDomainName:
+    Description: API Gateway regional domain name for CloudFront origin
+    Value: !Sub 'https://${CaBackendApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}'
+    Export:
+      Name: !Sub '${AWS::StackName}-api-url'
+
+  ApiGatewayId:
+    Description: API Gateway ID
+    Value: !Ref CaBackendApi
+    Export:
+      Name: !Sub '${AWS::StackName}-api-id'
+
+  ApiStage:
+    Description: API Gateway deployment stage
+    Value: !Ref Environment
+    Export:
+      Name: !Sub '${AWS::StackName}-api-stage'
+
+  IssueReaderCertServiceErrorAlarmArn:
+    Description: ARN of the Issue Reader Certificate Service error alarm
+    Condition: CreateAlarmsAndMonitoring
+    Value: !GetAtt IssueReaderCertServiceErrorAlarm.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-issue-reader-cert-service-error-alarm-arn'
+
+  ApiGateway4xxErrorAlarmArn:
+    Description: ARN of the API Gateway 4xx error alarm
+    Condition: CreateMonitoringResources
+    Value: !GetAtt ApiGateway4xxErrorAlarm.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-api-gateway-4xx-error-alarm-arn'
+
+  ApiGateway5xxErrorAlarmArn:
+    Description: ARN of the API Gateway 5xx error alarm
+    Condition: CreateMonitoringResources
+    Value: !GetAtt ApiGateway5xxErrorAlarm.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-api-gateway-5xx-error-alarm-arn'
+
+  IssueReaderCertServiceFunctionVersion:
+    Description: Version of the Issue Reader Certificate Service Lambda function
+    Value: !Ref IssueReaderCertServiceFunction.Version
+    Export:
+      Name: !Sub '${AWS::StackName}-issue-reader-cert-service-function-version'
+
+  # Mock Services Outputs
+  MockServicesApiUrl:
+    Description: Mock services API base URL
+    Condition: DeployMockResources
+    Value: !Sub 'https://${MockServicesApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}'
+    Export:
+      Name: !Sub '${AWS::StackName}-mock-services-api-url'
+
+  MockJWKSEndpoint:
+    Description: Mock JWKS endpoint URL for Firebase App Check token verification
+    Condition: DeployMockResources
+    Value: !Sub 'https://${MockServicesApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/mock-jwks'
+    Export:
+      Name: !Sub '${AWS::StackName}-mock-jwks-endpoint'
+
+  MockIssueCertEndpoint:
+    Description: Mock certificate generation endpoint URL
+    Condition: DeployMockResources
+    Value: !Sub 'https://${MockServicesApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/mock-issue-cert-request'
+    Export:
+      Name: !Sub '${AWS::StackName}-mock-issue-cert-request-endpoint'
+
+
