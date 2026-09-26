@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: SAM application template for Verifier Certificate Authority backend
+Description: SAM application template for Verifier Certificate Authority CSRs
 
 Parameters:
   Environment:
@@ -155,90 +155,6 @@ Globals:
         POWERTOOLS_SERVICE_NAME: mobile-wallet-verifier-certificate-signing-requests
 
 Resources:
-  # ========================================
-  # PRODUCTION SERVICES
-  # ========================================
-
-  # Customer-managed KMS key for SNS encryption with CloudWatch permissions
-  WarningsChannelKMSKey:
-    Type: AWS::KMS::Key
-    Condition: CreateMonitoringResources
-    Properties:
-      Description: KMS key for SNS topic encryption with CloudWatch access
-      KeyPolicy:
-        Version: '2012-10-17'
-        Statement:
-          - Sid: Enable IAM User Permissions
-            Effect: Allow
-            Principal:
-              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
-            Action: 'kms:*'
-            Resource: '*'
-          - Sid: Allow CloudWatch to use the key
-            Effect: Allow
-            Principal:
-              Service: cloudwatch.amazonaws.com
-            Action:
-              - kms:Decrypt
-              - kms:GenerateDataKey
-            Resource: '*'
-
-  WarningsChannel:
-    Type: AWS::SNS::Topic
-    Condition: CreateMonitoringResources
-    Properties:
-      TopicName: !Sub '${AWS::StackName}-warnings'
-      DisplayName: !Sub '${AWS::StackName} Warnings'
-      KmsMasterKeyId: !Ref WarningsChannelKMSKey
-
-  WarningsChannelPolicy:
-    Type: AWS::SNS::TopicPolicy
-    Condition: CreateMonitoringResources
-    Properties:
-      Topics:
-        - !Ref WarningsChannel
-      PolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Sid: AllowCloudWatchAlarmsToPublish
-            Effect: Allow
-            Principal:
-              Service: cloudwatch.amazonaws.com
-            Action:
-              - sns:Publish
-            Resource: !Ref WarningsChannel
-            Condition:
-              StringEquals:
-                'aws:SourceAccount': !Ref 'AWS::AccountId'
-
-  CodeDeployServiceRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Action:
-              - sts:AssumeRole
-            Effect: Allow
-            Principal:
-              Service:
-                - codedeploy.amazonaws.com
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSCodeDeployRoleForLambda
-      PermissionsBoundary: !If [UsePermissionsBoundary, !Ref PermissionsBoundary, !Ref AWS::NoValue]
-
-  # Custom Deployment Config
-  Linear20PercentEvery1Minute:
-    Type: AWS::CodeDeploy::DeploymentConfig
-    Properties:
-      ComputePlatform: Lambda
-      DeploymentConfigName: !Sub ${AWS::StackName}-Linear20PercentEvery1Minute
-      TrafficRoutingConfig:
-        TimeBasedLinear:
-          LinearInterval: 1
-          LinearPercentage: 20
-        Type: TimeBasedLinear
-
   CsrReceivedBucket:
     Type: AWS::S3::Bucket
     DeletionPolicy: Retain
@@ -286,5 +202,3 @@ Outputs:
   CsrReceivedBucketName:
     Description: Name of the S3 bucket to store CSRs received from external DVS organisations
     Value: !Ref CsrReceivedBucket
-    Export:
-      Name: !Sub "${AWS::StackName}-CsrReceivedBucketName"
