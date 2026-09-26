@@ -282,9 +282,55 @@ Resources:
         - Key: Purpose
           Value: Store CSRs received from external DVS organisations
 
+  CsrValidatedBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Sub "${AWS::AccountId}-${AWS::StackName}-csr-validated"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      VersioningConfiguration:
+        Status: Enabled
+      LoggingConfiguration:
+        DestinationBucketName: !Sub "di-s3-access-logs-${AWS::AccountId}-${AWS::Region}"
+        LogFilePrefix: "s3-access-logs/"
+        TargetObjectKeyFormat:
+          PartitionedPrefix:
+            PartitionDateSource: EventTime
+      LifecycleConfiguration:
+        Rules:
+          - Id: CsrRetentionPolicy
+            Status: Enabled
+            ExpirationInDays: !Ref CsrRetentionDays
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerPreferred
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-CsrValidatedBucket"
+        - Key: Service
+          Value: verifier
+        - Key: Source
+          Value: govuk-one-login/mobile-wallet-verifier-ca-back/application.yaml
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Purpose
+          Value: Store validated CSRs
+
 Outputs:
   CsrReceivedBucketName:
     Description: Name of the S3 bucket to store CSRs received from external DVS organisations
     Value: !Ref CsrReceivedBucket
     Export:
       Name: !Sub "${AWS::StackName}-CsrReceivedBucketName"
+  CsrValidatedBucketName:
+    Description: Name of the S3 bucket which has validated CSRs
+    Value: !Ref CsrValidatedBucket
