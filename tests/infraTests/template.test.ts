@@ -124,4 +124,75 @@ describe('Application Infrastructure', () => {
       expect(logging.LogFilePrefix).toBe('s3-access-logs/');
     });
   });
+
+  describe('CsrValidated Bucket', () => {
+    let bucket: Record<string, unknown>;
+    let properties: Record<string, unknown>;
+
+    beforeAll(() => {
+      bucket = template.Resources.CsrValidatedBucket as Record<string, unknown>;
+      properties = bucket.Properties as Record<string, unknown>;
+    });
+
+    it('should exist and be of correct type', () => {
+      expect(bucket).toBeDefined();
+      expect(bucket.Type).toBe('AWS::S3::Bucket');
+    });
+
+    it('should have Retain deletion and update replace policies', () => {
+      expect(bucket.DeletionPolicy).toBe('Retain');
+      expect(bucket.UpdateReplacePolicy).toBe('Retain');
+    });
+
+    it('should have all public access blocked', () => {
+      const publicAccessBlock =
+        properties.PublicAccessBlockConfiguration as Record<string, unknown>;
+      expect(publicAccessBlock.BlockPublicAcls).toBe(true);
+      expect(publicAccessBlock.BlockPublicPolicy).toBe(true);
+      expect(publicAccessBlock.IgnorePublicAcls).toBe(true);
+      expect(publicAccessBlock.RestrictPublicBuckets).toBe(true);
+    });
+
+    it('should have AES256 server-side encryption', () => {
+      const encryption = properties.BucketEncryption as Record<string, unknown>;
+      const rules = encryption.ServerSideEncryptionConfiguration as Record<
+        string,
+        unknown
+      >[];
+      const rule = rules[0].ServerSideEncryptionByDefault as Record<
+        string,
+        unknown
+      >;
+      expect(rule.SSEAlgorithm).toBe('AES256');
+    });
+
+    it('should have versioning enabled', () => {
+      const versioning = properties.VersioningConfiguration as Record<
+        string,
+        unknown
+      >;
+      expect(versioning.Status).toBe('Enabled');
+    });
+
+    it('should have a lifecycle rule using CsrRetentionDays parameter', () => {
+      const lifecycle = properties.LifecycleConfiguration as Record<
+        string,
+        unknown
+      >;
+      const rules = lifecycle.Rules as Record<string, unknown>[];
+      expect(rules).toHaveLength(1);
+      expect(rules[0].Id).toBe('CsrRetentionPolicy');
+      expect(rules[0].Status).toBe('Enabled');
+      expect(rules[0].ExpirationInDays).toEqual({ Ref: 'CsrRetentionDays' });
+    });
+
+    it('should have access logging configured', () => {
+      const logging = properties.LoggingConfiguration as Record<
+        string,
+        unknown
+      >;
+      expect(logging.DestinationBucketName).toBeDefined();
+      expect(logging.LogFilePrefix).toBe('s3-access-logs/');
+    });
+  });
 });
