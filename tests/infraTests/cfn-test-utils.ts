@@ -85,7 +85,7 @@ export function testTemplateStructure(template: CloudFormationTemplate) {
     throw new Error('Invalid AWSTemplateFormatVersion');
   if (template.Transform !== 'AWS::Serverless-2016-10-31')
     throw new Error('Invalid Transform');
-  if (!template.Description?.includes('Verifier Certificate Authority backend'))
+  if (!template.Description?.includes('Verifier Certificate Authority CSRs'))
     throw new Error('Invalid Description');
 }
 
