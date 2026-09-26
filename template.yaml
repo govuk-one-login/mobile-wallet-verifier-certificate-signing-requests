@@ -1,0 +1,204 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: SAM application template for Verifier Certificate Authority CSRs
+
+Parameters:
+  Environment:
+    Description: The environment type
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - build
+      - staging
+      - integration
+      - prod
+
+  BaseAppStack:
+    Description: |
+      Name of the base-application stack (for CloudFormation imports).
+      Defaults to 'ca-base' or 'ca-base-pr-{pr-number}'.
+    Type: String
+    Default: 'ca-base'
+
+  CodeSigningConfigArn:
+    Description: |
+      The ARN of the Code Signing Config to use, provided by the deployment pipeline
+    Type: String
+    Default: none
+
+  PermissionsBoundary:
+    Description: |
+      The ARN of the permissions boundary to apply to any role created by the template
+    Type: String
+    Default: none
+
+  VpcStackName:
+    Description: |
+      The stack name of the VPC where Verifier CA lambdas will be deployed
+    Type: String
+    Default: vpc
+
+  CaBackendApiParam:
+    Description: |
+      The backend Api prefix url
+    Type: String
+    Default: ca-backend-api
+
+  EnableMonitoring:
+    Description: |
+      Whether to create CloudWatch alarms and SNS topics for monitoring.
+      Set to 'false' for feature branch deployments to avoid SNS topic name conflicts.
+    Type: String
+    Default: 'true'
+    AllowedValues:
+      - 'true'
+      - 'false'
+
+  LambdaDeploymentPreference:
+    Description: |
+      Specifies the configuration to enable gradual Lambda deployments. Value can be 'AllAtOnce', a default deployment config, or name of custom DeploymentConfig.
+    Type: String
+    Default: AllAtOnce
+
+  CsrRetentionDays:
+    Description: Number of days to retain CSRs. Default is 1 year == 366 days (allowing for leap year)
+    Type: Number
+    Default: 366
+
+Conditions:
+  UsePermissionsBoundary: !Not
+    - !Equals
+      - !Ref PermissionsBoundary
+      - none
+
+  # Deployment preference conditions
+  IsIntegrationOrProd: !Or
+    - !Equals [!Ref Environment, integration]
+    - !Equals [!Ref Environment, prod]
+
+  UseCodeSigning: !Not
+    - !Equals
+      - !Ref CodeSigningConfigArn
+      - none
+
+  IsDevEnvironment: !Equals
+    - !Ref Environment
+    - dev
+
+  CreateMonitoringResources: !Equals
+    - !Ref EnableMonitoring
+    - 'true'
+
+  CreateAlarmsAndMonitoring: !And
+    - !Condition IsIntegrationOrProd
+    - !Condition CreateMonitoringResources
+
+Mappings:
+  EnvironmentVariables:
+    dev:
+      DynatraceSecretArn: arn:aws:secretsmanager:eu-west-2:216552277552:secret:DynatraceNonProductionVariables
+      LambdaLogLevel: DEBUG
+
+    build:
+      DynatraceSecretArn: arn:aws:secretsmanager:eu-west-2:216552277552:secret:DynatraceNonProductionVariables
+      LambdaLogLevel: INFO
+
+    staging:
+      DynatraceSecretArn: arn:aws:secretsmanager:eu-west-2:216552277552:secret:DynatraceNonProductionVariables
+      LambdaLogLevel: INFO
+
+    integration:
+      DynatraceSecretArn: arn:aws:secretsmanager:eu-west-2:216552277552:secret:DynatraceNonProductionVariables
+      LambdaLogLevel: INFO
+
+    prod:
+      DynatraceSecretArn: arn:aws:secretsmanager:eu-west-2:216552277552:secret:DynatraceProductionVariables
+      LambdaLogLevel: INFO
+
+    CslsEgress:
+      build: arn:aws:logs:eu-west-2:885513274347:destination:csls_cw_logs_destination_prodpython-2
+      integration: arn:aws:logs:eu-west-2:885513274347:destination:csls_cw_logs_destination_prodpython-2
+      prod: arn:aws:logs:eu-west-2:885513274347:destination:csls_cw_logs_destination_prodpython-2
+      staging: arn:aws:logs:eu-west-2:885513274347:destination:csls_cw_logs_destination_prodpython-2
+
+Globals:
+  Function:
+    LoggingConfig:
+      LogFormat: JSON
+      ApplicationLogLevel: !FindInMap
+        - EnvironmentVariables
+        - !Ref Environment
+        - LambdaLogLevel
+      SystemLogLevel: !FindInMap
+        - EnvironmentVariables
+        - !Ref Environment
+        - LambdaLogLevel
+    Runtime: nodejs22.x
+    Architectures:
+      - arm64
+    PermissionsBoundary: !If
+      - UsePermissionsBoundary
+      - !Ref PermissionsBoundary
+      - !Ref AWS::NoValue
+    AutoPublishAlias: live
+    CodeSigningConfigArn: !If
+      - UseCodeSigning
+      - !Ref CodeSigningConfigArn
+      - !Ref AWS::NoValue
+    DeploymentPreference:
+      Enabled: !If [IsIntegrationOrProd, true, false]
+      Type: !If [IsIntegrationOrProd, !Ref Linear20PercentEvery1Minute, !Ref LambdaDeploymentPreference]
+      Role: !GetAtt CodeDeployServiceRole.Arn
+    Environment:
+      Variables:
+        POWERTOOLS_SERVICE_NAME: mobile-wallet-verifier-certificate-signing-requests
+
+Resources:
+  CsrReceivedBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Sub "${AWS::AccountId}-${AWS::StackName}-csr-received"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      VersioningConfiguration:
+        Status: Enabled
+      LoggingConfiguration:
+        DestinationBucketName: !Sub "di-s3-access-logs-${AWS::AccountId}-${AWS::Region}"
+        LogFilePrefix: "s3-access-logs/"
+        TargetObjectKeyFormat:
+          PartitionedPrefix:
+            PartitionDateSource: EventTime
+      LifecycleConfiguration:
+        Rules:
+          - Id: CsrRetentionPolicy
+            Status: Enabled
+            ExpirationInDays: !Ref CsrRetentionDays
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerPreferred
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-CsrReceivedBucket"
+        - Key: Service
+          Value: verifier
+        - Key: Source
+          Value: govuk-one-login/mobile-wallet-verifier-ca-back/application.yaml
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Purpose
+          Value: Store CSRs received from external DVS organisations
+
+Outputs:
+  CsrReceivedBucketName:
+    Description: Name of the S3 bucket to store CSRs received from external DVS organisations
+    Value: !Ref CsrReceivedBucket

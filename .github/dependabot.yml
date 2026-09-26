@@ -1,0 +1,39 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      time: "03:00"
+    groups:
+      minor-patch:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+    labels:
+      - dependencies
+      - npm
+    ignore:
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@peculiar/asn1-*"
+    commit-message:
+      prefix: "BAU"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      time: "03:00"
+    groups:
+      actions-deps:
+        patterns:
+          - "*"
+    labels:
+      - dependencies
+      - github-actions
+    commit-message:
+      prefix: "BAU"

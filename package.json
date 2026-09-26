@@ -1,0 +1,46 @@
+{
+  "name": "mobile-wallet-verifier-certificate-signing-requests",
+  "version": "1.0.0",
+  "description": "Mobile wallet verifier CSR backend services",
+  "type": "module",
+  "scripts": {
+    "postinstall": "husky || true",
+    "build": "mkdir -p dist && cp -f open-api-spec.yaml dist/ && node build.mjs",
+    "test": "./node_modules/.bin/vitest run",
+    "lint": "./node_modules/.bin/eslint .",
+    "format": "./node_modules/.bin/prettier --write '**/*.{json,md,ts}'",
+    "format:check": "./node_modules/.bin/prettier --check '**/*.{json,md,ts}'"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@aws-lambda-powertools/logger": "2.35.0",
+    "@aws-sdk/client-acm-pca": "3.1121.0",
+    "@aws-sdk/client-secrets-manager": "3.1121.0",
+    "@peculiar/asn1-schema": "2.6.0",
+    "@peculiar/asn1-x509": "2.6.0",
+    "@peculiar/x509": "2.0.0",
+    "esbuild": "0.28.2",
+    "jose": "6.2.10",
+    "reflect-metadata": "0.2.2"
+  },
+  "engines": {
+    "node": ">=22.0.0 <23.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.2",
+    "@types/aws-lambda": "8.10.162",
+    "@types/jsonwebtoken": "9.0.10",
+    "@types/node": "22.20.1",
+    "eslint": "10.9.1",
+    "glob": "13.0.6",
+    "husky": "9.1.7",
+    "jiti": "2.7.0",
+    "js-yaml": "5.4.1",
+    "prettier": "3.9.6",
+    "ts-node": "10.9.2",
+    "tsx": "4.23.13",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.68.0",
+    "vitest": "4.1.11"
+  }
+}
