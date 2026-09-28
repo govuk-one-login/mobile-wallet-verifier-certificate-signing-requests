@@ -16,9 +16,6 @@ const templateFeature = loadFeature(
 const receivedBucketFeature = loadFeature(
   join(__dirname, '../features/received-bucket.feature'),
 );
-const validatedBucketFeature = loadFeature(
-  join(__dirname, '../features/validated-bucket.feature'),
-);
 
 let template: CloudFormationTemplate;
 
@@ -214,4 +211,3 @@ const defineBucketFeature = (feature: ReturnType<typeof loadFeature>) => {
 };
 
 defineBucketFeature(receivedBucketFeature);
-defineBucketFeature(validatedBucketFeature);
