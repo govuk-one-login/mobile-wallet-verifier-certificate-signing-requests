@@ -10,7 +10,8 @@
     "resolveJsonModule": true,
     "allowImportingTsExtensions": true,
     "types": ["node"],
-    "noEmit": true
+    "noEmit": true,
+    "ignoreDeprecations": "6.0"
   },
   "exclude": ["node_modules", "dist", "coverage", "scripts"]
 }
