@@ -118,6 +118,32 @@ Globals:
         POWERTOOLS_SERVICE_NAME: mobile-wallet-verifier-certificate-signing-requests
 
 Resources:
+  CsrReceivedBucketKmsKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: KMS key for CsrReceivedBucket SSE-KMS encryption
+      EnableKeyRotation: true
+      KeyPolicy:
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action: kms:*
+            Resource: "*"
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-CsrReceivedBucketKmsKey"
+        - Key: Service
+          Value: verifier
+        - Key: Environment
+          Value: !Ref Environment
+
+  CsrReceivedBucketKmsKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: !Sub "alias/${AWS::StackName}-csr-received-bucket"
+      TargetKeyId: !Ref CsrReceivedBucketKmsKey
+
   CsrReceivedBucket:
     Type: AWS::S3::Bucket
     DeletionPolicy: Retain
@@ -132,7 +158,9 @@ Resources:
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
-              SSEAlgorithm: AES256
+              SSEAlgorithm: aws:kms
+              KMSMasterKeyID: !Ref CsrReceivedBucketKmsKey
+            BucketKeyEnabled: true
       VersioningConfiguration:
         Status: Enabled
       LoggingConfiguration:
@@ -164,6 +192,10 @@ Resources:
 
 
 Outputs:
+  CsrReceivedBucketKmsKeyArn:
+    Description: ARN of the KMS key used for CsrReceivedBucket encryption
+    Value: !GetAtt CsrReceivedBucketKmsKey.Arn
+
   CsrReceivedBucketName:
     Description: Name of the S3 bucket to store CSRs received from external DVS organisations
     Value: !Ref CsrReceivedBucket

@@ -82,17 +82,20 @@ describe('Application Infrastructure', () => {
       expect(publicAccessBlock.RestrictPublicBuckets).toBe(true);
     });
 
-    it('should have AES256 server-side encryption', () => {
+    it('should have SSE-KMS server-side encryption referencing the KMS key', () => {
       const encryption = properties.BucketEncryption as Record<string, unknown>;
       const rules = encryption.ServerSideEncryptionConfiguration as Record<
         string,
         unknown
       >[];
-      const rule = rules[0].ServerSideEncryptionByDefault as Record<
+      const rule = rules[0] as Record<string, unknown>;
+      const defaults = rule.ServerSideEncryptionByDefault as Record<
         string,
         unknown
       >;
-      expect(rule.SSEAlgorithm).toBe('AES256');
+      expect(defaults.SSEAlgorithm).toBe('aws:kms');
+      expect(defaults.KMSMasterKeyID).toEqual({ Ref: 'CsrReceivedBucketKmsKey' });
+      expect(rule.BucketKeyEnabled).toBe(true);
     });
 
     it('should have versioning enabled', () => {
@@ -122,6 +125,33 @@ describe('Application Infrastructure', () => {
       >;
       expect(logging.DestinationBucketName).toBeDefined();
       expect(logging.LogFilePrefix).toBe('s3-access-logs/');
+    });
+  });
+
+  describe('CsrReceivedBucket KMS Key', () => {
+    let key: Record<string, unknown>;
+    let properties: Record<string, unknown>;
+
+    beforeAll(() => {
+      key = template.Resources.CsrReceivedBucketKmsKey as Record<string, unknown>;
+      properties = key.Properties as Record<string, unknown>;
+    });
+
+    it('should exist and be of correct type', () => {
+      expect(key).toBeDefined();
+      expect(key.Type).toBe('AWS::KMS::Key');
+    });
+
+    it('should have key rotation enabled', () => {
+      expect(properties.EnableKeyRotation).toBe(true);
+    });
+
+    it('should have an alias', () => {
+      const alias = template.Resources.CsrReceivedBucketKmsKeyAlias as Record<string, unknown>;
+      expect(alias).toBeDefined();
+      expect(alias.Type).toBe('AWS::KMS::Alias');
+      const aliasProps = alias.Properties as Record<string, unknown>;
+      expect(aliasProps.TargetKeyId).toEqual({ Ref: 'CsrReceivedBucketKmsKey' });
     });
   });
 });
