@@ -14,13 +14,6 @@ Parameters:
       - integration
       - prod
 
-  BaseAppStack:
-    Description: |
-      Name of the base-application stack (for CloudFormation imports).
-      Defaults to 'ca-base' or 'ca-base-pr-{pr-number}'.
-    Type: String
-    Default: 'ca-base'
-
   CodeSigningConfigArn:
     Description: |
       The ARN of the Code Signing Config to use, provided by the deployment pipeline
@@ -38,22 +31,6 @@ Parameters:
       The stack name of the VPC where Verifier CA lambdas will be deployed
     Type: String
     Default: vpc
-
-  CaBackendApiParam:
-    Description: |
-      The backend Api prefix url
-    Type: String
-    Default: ca-backend-api
-
-  EnableMonitoring:
-    Description: |
-      Whether to create CloudWatch alarms and SNS topics for monitoring.
-      Set to 'false' for feature branch deployments to avoid SNS topic name conflicts.
-    Type: String
-    Default: 'true'
-    AllowedValues:
-      - 'true'
-      - 'false'
 
   LambdaDeploymentPreference:
     Description: |
@@ -86,14 +63,6 @@ Conditions:
     - !Ref Environment
     - dev
 
-  CreateMonitoringResources: !Equals
-    - !Ref EnableMonitoring
-    - 'true'
-
-  CreateAlarmsAndMonitoring: !And
-    - !Condition IsIntegrationOrProd
-    - !Condition CreateMonitoringResources
-
 Mappings:
   EnvironmentVariables:
     dev:
@@ -115,12 +84,6 @@ Mappings:
     prod:
       DynatraceSecretArn: arn:aws:secretsmanager:eu-west-2:216552277552:secret:DynatraceProductionVariables
       LambdaLogLevel: INFO
-
-    CslsEgress:
-      build: arn:aws:logs:eu-west-2:885513274347:destination:csls_cw_logs_destination_prodpython-2
-      integration: arn:aws:logs:eu-west-2:885513274347:destination:csls_cw_logs_destination_prodpython-2
-      prod: arn:aws:logs:eu-west-2:885513274347:destination:csls_cw_logs_destination_prodpython-2
-      staging: arn:aws:logs:eu-west-2:885513274347:destination:csls_cw_logs_destination_prodpython-2
 
 Globals:
   Function:
@@ -197,6 +160,8 @@ Resources:
           Value: !Ref Environment
         - Key: Purpose
           Value: Store CSRs received from external DVS organisations
+
+
 
 Outputs:
   CsrReceivedBucketName:
