@@ -2,6 +2,7 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
+    include: ['**/*.{test,spec,steps}.?(c|m)[jt]s?(x)'],
     env: {
       POWERTOOLS_DEV: 'true',
       POWERTOOLS_LOG_LEVEL: 'DEBUG',
