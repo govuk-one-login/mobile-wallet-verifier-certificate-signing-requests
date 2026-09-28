@@ -144,6 +144,32 @@ Resources:
       AliasName: !Sub "alias/${AWS::StackName}-csr-received-bucket"
       TargetKeyId: !Ref CsrReceivedBucketKmsKey
 
+  CsrValidatedBucketKmsKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: KMS key for CsrValidatedBucket SSE-KMS encryption
+      EnableKeyRotation: true
+      KeyPolicy:
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action: kms:*
+            Resource: "*"
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-CsrValidatedBucketKmsKey"
+        - Key: Service
+          Value: verifier
+        - Key: Environment
+          Value: !Ref Environment
+
+  CsrValidatedBucketKmsKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: !Sub "alias/${AWS::StackName}-csr-validated-bucket"
+      TargetKeyId: !Ref CsrValidatedBucketKmsKey
+
   CsrReceivedBucket:
     Type: AWS::S3::Bucket
     DeletionPolicy: Retain
@@ -203,7 +229,9 @@ Resources:
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
-              SSEAlgorithm: AES256
+              SSEAlgorithm: aws:kms
+              KMSMasterKeyID: !Ref CsrValidatedBucketKmsKey
+            BucketKeyEnabled: true
       VersioningConfiguration:
         Status: Enabled
       LoggingConfiguration:
