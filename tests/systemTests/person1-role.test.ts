@@ -4,8 +4,9 @@ import {
   PutObjectCommand,
   GetObjectCommand,
   ListObjectsV2Command,
+  DeleteObjectCommand,
 } from '@aws-sdk/client-s3';
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 
 const { STACK_NAME, AWS_ACCOUNT_ID, AWS_REGION = 'eu-west-2' } = process.env;
 
@@ -16,9 +17,19 @@ const csrReceivedBucket = `${AWS_ACCOUNT_ID}-${STACK_NAME}-csr-received`;
 const csrValidatedBucket = `${AWS_ACCOUNT_ID}-${STACK_NAME}-csr-validated`;
 const roleArn = `arn:aws:iam::${AWS_ACCOUNT_ID}:role/${STACK_NAME}-Person1Role`;
 
-let s3: S3Client;
+const fixtures = {
+  [csrReceivedBucket]: ['incoming/test.csr'],
+  [csrValidatedBucket]: ['validated/test.json', 'failed/test.json'],
+};
+
+// CLI role client — uses ambient credentials from the shell environment
+const cliS3 = new S3Client({ region: AWS_REGION });
+
+// Person1 assumed-role client — populated in beforeAll
+let person1S3: S3Client;
 
 beforeAll(async () => {
+  // Assume Person1 role
   const sts = new STSClient({ region: AWS_REGION });
   const { Credentials } = await sts.send(
     new AssumeRoleCommand({
@@ -26,8 +37,7 @@ beforeAll(async () => {
       RoleSessionName: 'person1-system-test',
     }),
   );
-
-  s3 = new S3Client({
+  person1S3 = new S3Client({
     region: AWS_REGION,
     credentials: {
       accessKeyId: Credentials!.AccessKeyId!,
@@ -35,12 +45,28 @@ beforeAll(async () => {
       sessionToken: Credentials!.SessionToken,
     },
   });
+
+  // Seed fixture objects into csr-validated using the CLI role
+  for (const key of fixtures[csrValidatedBucket]) {
+    await cliS3.send(
+      new PutObjectCommand({ Bucket: csrValidatedBucket, Key: key, Body: 'test-fixture' }),
+    );
+  }
+});
+
+afterAll(async () => {
+  // Clean up all fixture objects using the CLI role
+  for (const [bucket, keys] of Object.entries(fixtures)) {
+    for (const key of keys) {
+      await cliS3.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
+    }
+  }
 });
 
 describe('Person1 role S3 permissions', () => {
   it('allows s3:PutObject on csr-received/incoming/*', async () => {
     await expect(
-      s3.send(
+      person1S3.send(
         new PutObjectCommand({
           Bucket: csrReceivedBucket,
           Key: 'incoming/test.csr',
@@ -51,8 +77,24 @@ describe('Person1 role S3 permissions', () => {
   });
 
   it('allows s3:GetObject on csr-validated/validated/*.json', async () => {
+    try {
+      const result = await person1S3.send(
+        new GetObjectCommand({
+          Bucket: csrValidatedBucket,
+          Key: 'validated/test.json',
+        }),
+      );
+    } catch (error) {
+      console.error(error);
+      throw error// Handle the error if the operation is not allowed
+    }
+
+
+    // "User: arn:aws:sts::673684579794:assumed-role/csrs-ddunford-Person1Role/person1-system-test is not authorized to perform: kms:Decrypt on resource: arn:aws:kms:eu-west-2:673684579794:key/49f043dc-e408-4215-9e97-3ad1494b76ec because no identity-based policy allows the kms:Decrypt action"
+
+
     await expect(
-      s3.send(
+      person1S3.send(
         new GetObjectCommand({
           Bucket: csrValidatedBucket,
           Key: 'validated/test.json',
@@ -63,7 +105,7 @@ describe('Person1 role S3 permissions', () => {
 
   it('allows s3:GetObject on csr-validated/failed/*.json', async () => {
     await expect(
-      s3.send(
+      person1S3.send(
         new GetObjectCommand({
           Bucket: csrValidatedBucket,
           Key: 'failed/test.json',
@@ -72,24 +114,24 @@ describe('Person1 role S3 permissions', () => {
     ).resolves.toBeDefined();
   });
 
-  it('denies s3:GetObject on csr-received (read access denied)', async () => {
+  it('denies s3:GetObject on csr-received', async () => {
     await expect(
-      s3.send(
+      person1S3.send(
         new GetObjectCommand({
           Bucket: csrReceivedBucket,
           Key: 'incoming/test.csr',
         }),
       ),
-    ).rejects.toThrow(/AccessDenied|403/);
+    ).rejects.toThrow(/not authorized/);
   });
 
   it('denies s3:ListBucket on csr-received', async () => {
     await expect(
-      s3.send(
+      person1S3.send(
         new ListObjectsV2Command({
           Bucket: csrReceivedBucket,
         }),
       ),
-    ).rejects.toThrow(/AccessDenied|403/);
+    ).rejects.toThrow(/not authorized/);
   });
 });
