@@ -281,24 +281,39 @@ Resources:
             Version: "2012-10-17"
             Statement:
               - Effect: Allow
-                Action: s3:PutObject
-                Resource: 
-                  - !Sub "arn:aws:s3:::${AWS::AccountId}-*-csr-received/incoming/*"
-              - Effect: Allow
-                Action: s3:GetObject
-                Resource:
-                  - !Sub "arn:aws:s3:::${AWS::AccountId}-*-csr-validated/validated/*.json"
-                  - !Sub "arn:aws:s3:::${AWS::AccountId}-*-csr-validated/failed/*.json"
-              - Effect: Allow
                 Action:
-                  - kms:Encrypt
-                  - kms:GenerateDataKey
+                  - s3:PutObject
+                  - s3:GetObject
+                  - s3:ListBucket
                 Resource:
-                  - !Sub "arn:aws:kms:${AWS::Region}:${AWS::AccountId}:alias/*-csr-received-bucket"
-              - Effect: Allow
-                Action: kms:Decrypt
-                Resource:
-                  - !Sub "arn:aws:kms:${AWS::Region}:${AWS::AccountId}:alias/*-csr-validated-bucket"
+                  - !Sub "arn:aws:s3:::${AWS::AccountId}-*-csr-received/*"
+                  - !Sub "arn:aws:s3:::${AWS::AccountId}-*-csr-received"
+                  - !Sub "arn:aws:s3:::${AWS::AccountId}-*-csr-validated/*"
+                  - !Sub "arn:aws:s3:::${AWS::AccountId}-*-csr-validated"
+
+        # - PolicyName: Person1S3Access
+        #   PolicyDocument:
+        #     Version: "2012-10-17"
+        #     Statement:
+        #       - Effect: Allow
+        #         Action: s3:PutObject
+        #         Resource: 
+        #           - !Sub "arn:aws:s3:::${AWS::AccountId}-*-csr-received/incoming/*"
+        #       - Effect: Allow
+        #         Action: s3:GetObject
+        #         Resource:
+        #           - !Sub "arn:aws:s3:::${AWS::AccountId}-*-csr-validated/validated/*.json"
+        #           - !Sub "arn:aws:s3:::${AWS::AccountId}-*-csr-validated/failed/*.json"
+        #       - Effect: Allow
+        #         Action:
+        #           - kms:Encrypt
+        #           - kms:GenerateDataKey
+        #         Resource:
+        #           - !Sub "arn:aws:kms:${AWS::Region}:${AWS::AccountId}:alias/*-csr-received-bucket"
+        #       - Effect: Allow
+        #         Action: kms:Decrypt
+        #         Resource:
+        #           - !Sub "arn:aws:kms:${AWS::Region}:${AWS::AccountId}:alias/*-csr-validated-bucket"
 
   Person2Role:
     Type: AWS::IAM::Role
@@ -321,25 +336,39 @@ Resources:
             Version: "2012-10-17"
             Statement:
               - Effect: Allow
-                Action: s3:GetObject
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                  - s3:ListBucket
                 Resource:
-                  - !Sub "arn:aws:s3:::${AWS::AccountId}-csr-validated/validated/*.pem"
-                  - !Sub "arn:aws:s3:::${AWS::AccountId}-csr-validated/validated/*.json"
-                  - !Sub "arn:aws:s3:::${AWS::AccountId}-cert-issued/issued/*"
-              - Effect: Allow
-                Action: s3:ListBucket
-                Resource:
-                  - !Sub "arn:aws:s3:::${AWS::AccountId}-csr-validated"
-                  - !Sub "arn:aws:s3:::*-certs-*-${AWS::Region}-${AWS::AccountId}"
-                Condition:
-                  StringLike:
-                    s3:prefix:
-                      - validated/
-                      - issued/
-              - Effect: Allow
-                Action: kms:Decrypt
-                Resource:
-                  - !Sub "arn:aws:kms:${AWS::Region}:${AWS::AccountId}:alias/${AWS::StackName}-csr-validated-bucket"
+                  - !Sub "arn:aws:s3:::${AWS::AccountId}-*-csr-received/*"
+                  - !Sub "arn:aws:s3:::${AWS::AccountId}-*-csr-received"
+                  - !Sub "arn:aws:s3:::${AWS::AccountId}-*-csr-validated/*"
+                  - !Sub "arn:aws:s3:::${AWS::AccountId}-*-csr-validated"
+        # - PolicyName: Person2S3Access
+        #   PolicyDocument:
+        #     Version: "2012-10-17"
+        #     Statement:
+        #       - Effect: Allow
+        #         Action: s3:GetObject
+        #         Resource:
+        #           - !Sub "arn:aws:s3:::${AWS::AccountId}-csr-validated/validated/*.pem"
+        #           - !Sub "arn:aws:s3:::${AWS::AccountId}-csr-validated/validated/*.json"
+        #           - !Sub "arn:aws:s3:::${AWS::AccountId}-cert-issued/issued/*"
+        #       - Effect: Allow
+        #         Action: s3:ListBucket
+        #         Resource:
+        #           - !Sub "arn:aws:s3:::${AWS::AccountId}-csr-validated"
+        #           - !Sub "arn:aws:s3:::*-certs-*-${AWS::Region}-${AWS::AccountId}"
+        #         Condition:
+        #           StringLike:
+        #             s3:prefix:
+        #               - validated/
+        #               - issued/
+        #       - Effect: Allow
+        #         Action: kms:Decrypt
+        #         Resource:
+        #           - !Sub "arn:aws:kms:${AWS::Region}:${AWS::AccountId}:alias/${AWS::StackName}-csr-validated-bucket"
 
 Outputs:
   CsrReceivedBucketKmsKeyArn:
