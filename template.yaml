@@ -260,7 +260,45 @@ Resources:
         - Key: Purpose
           Value: Store validated CSRs
 
-
+  Person1Role:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-Person1Role"
+      PermissionsBoundary: !If
+        - UsePermissionsBoundary
+        - !Ref PermissionsBoundary
+        - !Ref AWS::NoValue
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: Person1S3Access
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: s3:PutObject
+                Resource: 
+                  - !Sub "arn:aws:s3:::${AWS::AccountId}-*-csr-received/incoming/*"
+              - Effect: Allow
+                Action: s3:GetObject
+                Resource:
+                  - !Sub "arn:aws:s3:::${AWS::AccountId}-*-csr-validated/validated/*.json"
+                  - !Sub "arn:aws:s3:::${AWS::AccountId}-*-csr-validated/failed/*.json"
+              - Effect: Allow
+                Action:
+                  - kms:Encrypt
+                  - kms:GenerateDataKey
+                Resource:
+                  - !Sub "arn:aws:kms:${AWS::Region}:${AWS::AccountId}:alias/*-csr-received-bucket"
+              - Effect: Allow
+                Action: kms:Decrypt
+                Resource:
+                  - !Sub "arn:aws:kms:${AWS::Region}:${AWS::AccountId}:alias/*-csr-validated-bucket"
 
 Outputs:
   CsrReceivedBucketKmsKeyArn:
@@ -270,6 +308,7 @@ Outputs:
   CsrReceivedBucketName:
     Description: Name of the S3 bucket to store CSRs received from external DVS organisations
     Value: !Ref CsrReceivedBucket
+
   CsrValidatedBucketName:
     Description: Name of the S3 bucket which has validated CSRs
     Value: !Ref CsrValidatedBucket
