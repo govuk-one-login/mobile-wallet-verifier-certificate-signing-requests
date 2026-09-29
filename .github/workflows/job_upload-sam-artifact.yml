@@ -1,0 +1,66 @@
+name: Upload SAM Artifact
+
+on:
+  workflow_call:
+    inputs:
+      AWS_REGION:
+        description: The AWS region
+        type: string
+        default: eu-west-2
+      TEMPLATE_NAME:
+        description: The name of the SAM template to upload
+        type: string
+        required: true
+      WORKING_DIRECTORY:
+        description: Path to working directory in repo
+        required: true
+        type: string
+    secrets:
+      ARTIFACT_BUCKET:
+        description: Artifact source bucket for SAM artifact
+        required: true
+      GH_ACTIONS_ROLE_ARN:
+        description: AWS role for pushing the artifact to AWS
+        required: true
+      SIGNING_PROFILE_NAME:
+        description: Profile used to sign SAM artifact
+        required: true
+
+jobs:
+  upload-artifact:
+    name: Upload SAM Artifact
+    runs-on: ubuntu-24.04
+    permissions:
+      id-token: write
+      contents: read
+    defaults:
+      run:
+        shell: bash
+    env:
+      SAM_CLI_TELEMETRY: 0
+      TEMPLATE_NAME: ${{ inputs.TEMPLATE_NAME }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+
+      - name: Authenticate with AWS
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          aws-region: ${{ inputs.AWS_REGION }}
+          role-to-assume: ${{ secrets.GH_ACTIONS_ROLE_ARN }}
+
+      - name: Setup AWS SAM CLI
+        uses: aws-actions/setup-sam@89ddb14d60e682855e3fea4be85b3c56485de310 # v2
+
+      - name: SAM Build
+        run: sam build --template "$TEMPLATE_NAME"
+
+      - name: Upload SAM Artifact into the Artifact Bucket
+        uses: govuk-one-login/devplatform-upload-action@9320b8e71484f79c1b48139a86d214473d0f2709 # v4.3.0
+        with:
+          artifact-bucket-name: ${{ secrets.ARTIFACT_BUCKET }}
+          signing-profile-name: ${{ secrets.SIGNING_PROFILE_NAME }}
+          template-file: .aws-sam/build/template.yaml
