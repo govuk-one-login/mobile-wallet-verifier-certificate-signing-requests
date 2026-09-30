@@ -59,10 +59,6 @@ Conditions:
       - !Ref CodeSigningConfigArn
       - none
 
-  IsDevEnvironment: !Equals
-    - !Ref Environment
-    - dev
-
 Mappings:
   EnvironmentVariables:
     dev:
@@ -105,17 +101,9 @@ Globals:
       - !Ref PermissionsBoundary
       - !Ref AWS::NoValue
     AutoPublishAlias: live
-    CodeSigningConfigArn: !If
-      - UseCodeSigning
-      - !Ref CodeSigningConfigArn
-      - !Ref AWS::NoValue
     DeploymentPreference:
       Enabled: !If [IsIntegrationOrProd, true, false]
-      Type: !If [IsIntegrationOrProd, !Ref Linear20PercentEvery1Minute, !Ref LambdaDeploymentPreference]
-      Role: !GetAtt CodeDeployServiceRole.Arn
-    Environment:
-      Variables:
-        POWERTOOLS_SERVICE_NAME: mobile-wallet-verifier-certificate-signing-requests
+      Type: !Ref LambdaDeploymentPreference
 
 Resources:
   CsrReceivedBucketKmsKey:
@@ -260,6 +248,66 @@ Resources:
         - Key: Purpose
           Value: Store validated CSRs
 
+
+
+  CsrValidatorFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Metadata:
+      checkov:
+        skip:
+          - id: CKV_AWS_158
+            comment: KMS encryption not required for Lambda log group
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${AWS::StackName}-csr-validator
+      RetentionInDays: 30
+
+  CsrValidatorFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-CsrValidatorFunctionRole"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+      PermissionsBoundary: !If
+        - UsePermissionsBoundary
+        - !Ref PermissionsBoundary
+        - !Ref AWS::NoValue
+
+  CsrValidatorFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: false
+        EntryPoints:
+          - src/csr-validator/handler.ts
+      checkov:
+        skip:
+          - id: CKV_AWS_115
+            comment: Concurrency limit not required for this function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-csr-validator"
+      CodeUri: ./
+      Handler: handler.handler
+      CodeSigningConfigArn: !If
+        - UseCodeSigning
+        - !Ref CodeSigningConfigArn
+        - !Ref AWS::NoValue
+      Role: !GetAtt CsrValidatorFunctionRole.Arn
+      VpcConfig:
+        SecurityGroupIds:
+          - Fn::ImportValue: !Sub "${VpcStackName}-AWSServicesEndpointSecurityGroupId"
+        SubnetIds: !Split
+          - ","
+          - Fn::ImportValue: !Sub "${VpcStackName}-PrivateSubnetIds"
 
 
 Outputs:

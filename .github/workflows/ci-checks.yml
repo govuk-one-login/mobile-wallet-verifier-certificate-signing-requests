@@ -1,0 +1,34 @@
+name: Pre-Merge CI Checks
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "template.yaml"
+      - ".github/workflows/**"
+    types: [opened, reopened, ready_for_review, synchronize, converted_to_draft]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: read
+  pull-requests: write
+  id-token: write
+
+jobs:
+  sonarqube:
+    name: SonarQube Scan
+    uses: ./.github/workflows/job-quality-checks.yml
+    with:
+      RUN_SONARQUBE: "true"
+      WORKING_DIRECTORY: ./
+    secrets: inherit
+
+  validate-csr-template:
+    name: Validate CSR Template
+    uses: ./.github/workflows/job-validate-template.yml
+    with:
+      TEMPLATE_PATH: template.yaml
+      AWS_REGION: eu-west-2
+      BUILD_TEMPLATE: true
