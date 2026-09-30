@@ -28,7 +28,7 @@ on:
 
 jobs:
   upload-artifact:
-    name: Upload SAM Artifact
+    name: Validate, Build and Upload SAM Artifact
     runs-on: ubuntu-24.04
     permissions:
       id-token: write
@@ -36,9 +36,11 @@ jobs:
     defaults:
       run:
         shell: bash
+        working-directory: ${{ inputs.WORKING_DIRECTORY }}
     env:
       SAM_CLI_TELEMETRY: 0
       TEMPLATE_NAME: ${{ inputs.TEMPLATE_NAME }}
+      AWS_REGION: ${{ inputs.AWS_REGION }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -52,17 +54,36 @@ jobs:
             "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" | jq -r '.value')
           echo "$TOKEN" | cut -d. -f2 | base64 -d 2>/dev/null | jq '{sub, aud, repository, ref, event_name}'
 
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          cache: npm
+          cache-dependency-path: ${{ inputs.WORKING_DIRECTORY }}/package-lock.json
+          node-version-file: ${{ inputs.WORKING_DIRECTORY }}/.nvmrc
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Run typecheck
+        run: npm run typecheck
+
+      - name: Run tests
+        run: npm test
+
+      - name: Setup AWS SAM CLI
+        uses: aws-actions/setup-sam@89ddb14d60e682855e3fea4be85b3c56485de310 # v2
+
+      - name: SAM Validate
+        run: sam validate --lint --template "$TEMPLATE_NAME" --region "$AWS_REGION"
+
+      - name: SAM Build
+        run: sam build --template "$TEMPLATE_NAME"
+
       - name: Authenticate with AWS
         uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
         with:
           aws-region: ${{ inputs.AWS_REGION }}
           role-to-assume: ${{ secrets.GH_ACTIONS_ROLE_ARN }}
-
-      - name: Setup AWS SAM CLI
-        uses: aws-actions/setup-sam@89ddb14d60e682855e3fea4be85b3c56485de310 # v2
-
-      - name: SAM Build
-        run: sam build --template "$TEMPLATE_NAME"
 
       - name: Upload SAM Artifact into the Artifact Bucket
         uses: govuk-one-login/devplatform-upload-action@9320b8e71484f79c1b48139a86d214473d0f2709 # v4.3.0

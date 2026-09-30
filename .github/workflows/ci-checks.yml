@@ -5,7 +5,20 @@ on:
     branches: [main]
     paths:
       - "src/**"
+      - "tests/**"
       - "template.yaml"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.json"
+      - "vitest.config.ts"
+      - "vitest.setup.ts"
+      - "eslint.config.ts"
+      - ".nvmrc"
+      - ".npmrc"
+      - ".husky/**"
+      - "sonar-project.properties"
+      - ".prettierrc.cjs"
+      - ".prettierignore"
       - ".github/workflows/**"
     types: [opened, reopened, ready_for_review, synchronize, converted_to_draft]
   workflow_dispatch:
@@ -19,9 +32,14 @@ permissions:
 jobs:
   sonarqube:
     name: SonarQube Scan
+    permissions:
+      contents: read
+      packages: read
+      pull-requests: write
+      id-token: write
     uses: ./.github/workflows/job-quality-checks.yml
     with:
-      RUN_SONARQUBE: "true"
+      RUN_SONARQUBE: true
       WORKING_DIRECTORY: ./
     secrets: inherit
 

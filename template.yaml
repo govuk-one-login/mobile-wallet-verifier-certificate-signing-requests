@@ -59,6 +59,11 @@ Conditions:
       - !Ref CodeSigningConfigArn
       - none
 
+  CreateValidator: !Or
+    - !Equals [!Ref Environment, dev]
+    - !Equals [!Ref Environment, build]
+    - !Equals [!Ref Environment, integration]
+
 Mappings:
   EnvironmentVariables:
     dev:
@@ -248,10 +253,9 @@ Resources:
         - Key: Purpose
           Value: Store validated CSRs
 
-
-
   CsrValidatorFunctionLogGroup:
     Type: AWS::Logs::LogGroup
+    Condition: CreateValidator
     Metadata:
       checkov:
         skip:
@@ -263,6 +267,7 @@ Resources:
 
   CsrValidatorFunctionRole:
     Type: AWS::IAM::Role
+    Condition: CreateValidator
     Properties:
       RoleName: !Sub "${AWS::StackName}-CsrValidatorFunctionRole"
       AssumeRolePolicyDocument:
@@ -281,6 +286,7 @@ Resources:
 
   CsrValidatorFunction:
     Type: AWS::Serverless::Function
+    Condition: CreateValidator
     Metadata:
       BuildMethod: esbuild
       BuildProperties:
@@ -302,6 +308,8 @@ Resources:
         - !Ref CodeSigningConfigArn
         - !Ref AWS::NoValue
       Role: !GetAtt CsrValidatorFunctionRole.Arn
+      LoggingConfig:
+        LogGroup: !Ref CsrValidatorFunctionLogGroup
       VpcConfig:
         SecurityGroupIds:
           - Fn::ImportValue: !Sub "${VpcStackName}-AWSServicesEndpointSecurityGroupId"
