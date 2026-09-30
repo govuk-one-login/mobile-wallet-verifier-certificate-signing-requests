@@ -9,7 +9,7 @@ describe("csr-validator handler", () => {
     await handler(event);
 
     expect(consoleSpy).toHaveBeenCalledWith(
-      "CSR validator invoked test",
+      "CSR validator invoked",
       JSON.stringify(event)
     );
   });
