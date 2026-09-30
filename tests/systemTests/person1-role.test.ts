@@ -77,22 +77,6 @@ describe('Person1 role S3 permissions', () => {
   });
 
   it('allows s3:GetObject on csr-validated/validated/*.json', async () => {
-    try {
-      const result = await person1S3.send(
-        new GetObjectCommand({
-          Bucket: csrValidatedBucket,
-          Key: 'validated/test.json',
-        }),
-      );
-    } catch (error) {
-      console.error(error);
-      throw error// Handle the error if the operation is not allowed
-    }
-
-
-    // "User: arn:aws:sts::673684579794:assumed-role/csrs-ddunford-Person1Role/person1-system-test is not authorized to perform: kms:Decrypt on resource: arn:aws:kms:eu-west-2:673684579794:key/49f043dc-e408-4215-9e97-3ad1494b76ec because no identity-based policy allows the kms:Decrypt action"
-
-
     await expect(
       person1S3.send(
         new GetObjectCommand({
