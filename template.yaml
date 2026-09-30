@@ -283,7 +283,12 @@ Resources:
               AWS: !Sub "arn:aws:iam::${AWS::AccountId}:role/${AWS::StackName}-Person1Role"
             Action: s3:PutObject
             NotResource: !Sub "arn:aws:s3:::${CsrReceivedBucket}/incoming/*"
-  
+          - Effect: Deny
+            Principal:
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:role/${AWS::StackName}-Person1Role"
+            Action: s3:ListBucket
+            Resource: !Sub "arn:aws:s3:::${CsrReceivedBucket}"
+
   CsrValidatedBucketPolicy:
     Type: AWS::S3::BucketPolicy
     Properties:
@@ -293,16 +298,14 @@ Resources:
           - Effect: Deny
             Principal:
               AWS: !Sub "arn:aws:iam::${AWS::AccountId}:role/${AWS::StackName}-Person1Role"
-            Action:
-              - s3:PutObject
-            Resource:
-              - !Sub "arn:aws:s3:::${CsrValidatedBucket}/*"
+            Action: s3:PutObject
+            Resource: !Sub "arn:aws:s3:::${CsrValidatedBucket}/*"
           - Effect: Deny
             Principal:
               AWS: !Sub "arn:aws:iam::${AWS::AccountId}:role/${AWS::StackName}-Person1Role"
             Action: s3:GetObject
             NotResource:
-              - !Sub "arn:aws:s3:::${CsrValidatedBucket}/validated/*.json*"
+              - !Sub "arn:aws:s3:::${CsrValidatedBucket}/validated/*.json"
               - !Sub "arn:aws:s3:::${CsrValidatedBucket}/failed/*.json"
 
   Person1Role:
