@@ -22,9 +22,15 @@ export interface CloudFormationTemplate {
 }
 
 // Handle CloudFormation intrinsic functions that can appear in different contexts
+const neverIdentify = () => false;
+
 const createCfnTags = (tag: string, fnName: string) => [
-  defineScalarTag(tag, { resolve: (data: string) => ({ [fnName]: data }) }),
+  defineScalarTag(tag, {
+    identify: neverIdentify,
+    resolve: (data: string) => ({ [fnName]: data }),
+  }),
   defineSequenceTag(tag, {
+    identify: neverIdentify,
     create: () => [] as unknown[],
     addItem: (arr: unknown[], item: unknown) => {
       arr.push(item);
@@ -32,6 +38,7 @@ const createCfnTags = (tag: string, fnName: string) => [
     finalize: (arr: unknown[]) => ({ [fnName]: arr }),
   }),
   defineMappingTag(tag, {
+    identify: neverIdentify,
     create: () => ({}) as Record<string, unknown>,
     addPair: (obj: Record<string, unknown>, key: unknown, value: unknown) => {
       obj[key as string] = value;
@@ -78,6 +85,36 @@ export const ENVIRONMENT_VALUES = [
   'integration',
   'prod',
 ];
+
+export function evaluateCondition(
+  expression: unknown,
+  environment: string,
+): boolean {
+  const resolve = (value: unknown): string => {
+    if (typeof value === 'string') return value;
+    const node = value as Record<string, unknown> | null;
+    if (node && 'Ref' in node && node.Ref === 'Environment') return environment;
+    throw new Error(`Unsupported Equals operand: ${JSON.stringify(value)}`);
+  };
+  if (typeof expression !== 'object' || expression === null) {
+    throw new Error(`Unsupported condition: ${JSON.stringify(expression)}`);
+  }
+  const node = expression as Record<string, unknown>;
+  if ('Fn::Or' in node) {
+    return (node['Fn::Or'] as unknown[]).some((e) =>
+      evaluateCondition(e, environment),
+    );
+  }
+  if ('Fn::Not' in node) {
+    const [inner] = node['Fn::Not'] as unknown[];
+    return !evaluateCondition(inner, environment);
+  }
+  if ('Fn::Equals' in node) {
+    const [a, b] = node['Fn::Equals'] as unknown[];
+    return resolve(a) === resolve(b);
+  }
+  throw new Error(`Unsupported condition expression: ${JSON.stringify(node)}`);
+}
 
 // Common test helpers
 export function testTemplateStructure(template: CloudFormationTemplate) {
