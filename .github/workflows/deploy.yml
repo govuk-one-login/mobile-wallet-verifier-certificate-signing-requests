@@ -6,6 +6,11 @@ on:
     paths:
       - "src/**"
       - "template.yaml"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.json"
+      - ".nvmrc"
+      - ".npmrc"
       - ".github/workflows/deploy.yml"
       - ".github/workflows/job-validate-template.yml"
       - ".github/workflows/job_upload-sam-artifact.yml"
@@ -24,6 +29,10 @@ permissions:
   contents: read
   id-token: write
   packages: read
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
 
 defaults:
   run:
