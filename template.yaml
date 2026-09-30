@@ -272,6 +272,55 @@ Resources:
         - Key: Purpose
           Value: Store validated CSRs
 
+  CsrReceivedBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref CsrReceivedBucket
+      PolicyDocument:
+        Statement:
+          - Effect: Deny
+            Principal:
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:role/${AWS::StackName}-Person1Role"
+            Action: s3:PutObject
+            Resource:
+              - !Sub "arn:aws:s3:::${CsrReceivedBucket}"
+              - !Sub "arn:aws:s3:::${CsrReceivedBucket}/*"
+  #         - Effect: Deny
+  #           Principal:
+  #             AWS: !Sub "arn:aws:iam::${AWS::AccountId}:role/${AWS::StackName}-Person1Role"
+  #           Action: s3:PutObject
+  #           Resource: !Sub "arn:aws:s3:::${CsrReceivedBucket}/*"
+  #           Condition:
+  #             StringNotLike:
+  #               s3:prefix: "incoming/*"
+
+  # CsrValidatedBucketPolicy:
+  #   Type: AWS::S3::BucketPolicy
+  #   Properties:
+  #     Bucket: !Ref CsrValidatedBucket
+  #     PolicyDocument:
+  #       Statement:
+  #         - Effect: Deny
+  #           Principal:
+  #             AWS: !Sub "arn:aws:iam::${AWS::AccountId}:role/${AWS::StackName}-Person1Role"
+  #           Action:
+  #             - s3:PutObject
+  #             - s3:DeleteObject
+  #             - s3:ListBucket
+  #           Resource:
+  #             - !Sub "arn:aws:s3:::${CsrValidatedBucket}"
+  #             - !Sub "arn:aws:s3:::${CsrValidatedBucket}/*"
+  #         - Effect: Deny
+  #           Principal:
+  #             AWS: !Sub "arn:aws:iam::${AWS::AccountId}:role/${AWS::StackName}-Person1Role"
+  #           Action: s3:GetObject
+  #           Resource: !Sub "arn:aws:s3:::${CsrValidatedBucket}/*"
+  #           Condition:
+  #             StringNotLike:
+  #               s3:prefix:
+  #                 - "validated/*.json"
+  #                 - "failed/*.json"
+
   Person1Role:
     Type: AWS::IAM::Role
     Properties:
