@@ -330,36 +330,42 @@ Resources:
                 Resource:
                   - !GetAtt CsrValidatedBucketKmsKey.Arn
 
-  # Person2Role:
-  #   Type: AWS::IAM::Role
-  #   Properties:
-  #     RoleName: !Sub "${AWS::StackName}-Person2Role"
-  #     PermissionsBoundary: !If
-  #       - UsePermissionsBoundary
-  #       - !Ref PermissionsBoundary
-  #       - !Ref AWS::NoValue
-  #     AssumeRolePolicyDocument:
-  #       Version: "2012-10-17"
-  #       Statement:
-  #         - Effect: Allow
-  #           Principal:
-  #             AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
-  #           Action: sts:AssumeRole
-  #     Policies:
-  #       - PolicyName: Person2S3Access
-  #         PolicyDocument:
-  #           Version: "2012-10-17"
-  #           Statement:
-  #             - Effect: Allow
-  #               Action:
-  #                 - s3:PutObject
-  #                 - s3:GetObject
-  #                 - s3:ListBucket
-  #               Resource:
-  #                 - !Sub "arn:aws:s3:::${AWS::AccountId}-*-csr-received/*"
-  #                 - !Sub "arn:aws:s3:::${AWS::AccountId}-*-csr-received"
-  #                 - !Sub "arn:aws:s3:::${AWS::AccountId}-*-csr-validated/*"
-  #                 - !Sub "arn:aws:s3:::${AWS::AccountId}-*-csr-validated"
+  L3IssueRevokeOperatorRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-L3IssueRevokeOperatorRole"
+      PermissionsBoundary: !If
+        - UsePermissionsBoundary
+        - !Ref PermissionsBoundary
+        - !Ref AWS::NoValue
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: L3IssueRevokeOperatorS3AccessValidatedBucket
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                Resource:
+                  - !Sub "arn:aws:s3:::${CsrValidatedBucket}/*"
+                  - !Sub "arn:aws:s3:::${CsrValidatedBucket}"
+        - PolicyName: L3IssueRevokeOperatorAccessValidatedBucket
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - kms:Decrypt
+                Resource:
+                  - !GetAtt CsrValidatedBucketKmsKey.Arn
 
 Outputs:
   CsrReceivedBucketName:

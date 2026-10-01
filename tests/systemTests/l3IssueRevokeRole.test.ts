@@ -15,18 +15,18 @@ if (!AWS_ACCOUNT_ID) throw new Error('AWS_ACCOUNT_ID env var is required');
 
 const csrReceivedBucket = `${AWS_ACCOUNT_ID}-${STACK_NAME}-csr-received`;
 const csrValidatedBucket = `${AWS_ACCOUNT_ID}-${STACK_NAME}-csr-validated`;
-const roleArn = `arn:aws:iam::${AWS_ACCOUNT_ID}:role/${STACK_NAME}-L3EnableDisableOperatorRole`;
+const roleArn = `arn:aws:iam::${AWS_ACCOUNT_ID}:role/${STACK_NAME}-L3IssueRevokeOperatorRole`;
 
 const fixtures = {
-  [csrReceivedBucket]: ['incoming/test1.csr'],
-  [csrValidatedBucket]: ['validated/test1.json', 'failed/test1.json'],
+  [csrReceivedBucket]: ['incoming/test.csr'],
+  [csrValidatedBucket]: ['validated/test.json', 'failed/test.json'],
 };
 
 // CLI role client — uses ambient credentials from the shell environment
 const cliS3 = new S3Client({ region: AWS_REGION });
 
-// L3EnableDisableOperatorS3 assumed-role client — populated in beforeAll
-let l3EnableDisableOperatorS3: S3Client;
+// l3IssueRevokeOperatorS3 assumed-role client — populated in beforeAll
+let l3IssueRevokeOperatorS3: S3Client;
 
 beforeAll(async () => {
   // Assume L3EnableDisableOperatorRole
@@ -37,7 +37,7 @@ beforeAll(async () => {
       RoleSessionName: 'person1-system-test',
     }),
   );
-  l3EnableDisableOperatorS3 = new S3Client({
+  l3IssueRevokeOperatorS3 = new S3Client({
     region: AWS_REGION,
     credentials: {
       accessKeyId: Credentials!.AccessKeyId!,
@@ -63,25 +63,36 @@ afterAll(async () => {
   }
 });
 
-describe('L3EnableDisableOperator role S3 permissions', () => {
-  it('allows s3:PutObject on csr-received/incoming/*', async () => {
+describe('L3IssueRevokeOperator role S3 permissions', () => {
+  it('denies s3:PutObject on csr-received/incoming/*', async () => {
     await expect(
-      l3EnableDisableOperatorS3.send(
+      l3IssueRevokeOperatorS3.send(
         new PutObjectCommand({
           Bucket: csrReceivedBucket,
-          Key: 'incoming/test1.csr',
+          Key: 'incoming/test.csr',
           Body: 'test',
         }),
       ),
-    ).resolves.toBeDefined();
+    ).rejects.toThrow(/not authorized/);
+  });
+
+  it('denies s3:GetObject on csr-received/incoming/*', async () => {
+    await expect(
+      l3IssueRevokeOperatorS3.send(
+        new GetObjectCommand({
+          Bucket: csrReceivedBucket,
+          Key: 'incoming/test.csr',
+        }),
+      ),
+    ).rejects.toThrow(/not authorized/);
   });
 
   it('allows s3:GetObject on csr-validated/validated/*.json', async () => {
     await expect(
-      l3EnableDisableOperatorS3.send(
+      l3IssueRevokeOperatorS3.send(
         new GetObjectCommand({
           Bucket: csrValidatedBucket,
-          Key: 'validated/test1.json',
+          Key: 'validated/test.json',
         }),
       ),
     ).resolves.toBeDefined();
@@ -89,43 +100,42 @@ describe('L3EnableDisableOperator role S3 permissions', () => {
 
   it('allows s3:GetObject on csr-validated/failed/*.json', async () => {
     await expect(
-      l3EnableDisableOperatorS3.send(
+      l3IssueRevokeOperatorS3.send(
         new GetObjectCommand({
           Bucket: csrValidatedBucket,
-          Key: 'failed/test1.json',
+          Key: 'failed/test.json',
         }),
       ),
     ).resolves.toBeDefined();
   });
 
-  it('denies s3:GetObject on csr-received', async () => {
-    await expect(
-      l3EnableDisableOperatorS3.send(
-        new GetObjectCommand({
-          Bucket: csrReceivedBucket,
-          Key: 'incoming/test1.csr',
-        }),
-      ),
-    ).rejects.toThrow(/not authorized/);
-  });
-
   it('denies s3:PutObject on csr-validated', async () => {
     await expect(
-      l3EnableDisableOperatorS3.send(
+      l3IssueRevokeOperatorS3.send(
         new PutObjectCommand({
           Bucket: csrValidatedBucket,
-          Key: 'validated/test1.json',
+          Key: 'validated/test.json',
           Body: 'test',
         }),
       ),
     ).rejects.toThrow(/not authorized/);
   });
 
-  it('allows s3:ListBucket on csr-received', async () => {
+  it('denies s3:ListBucket on csr-received', async () => {
     await expect(
-      l3EnableDisableOperatorS3.send(
+      l3IssueRevokeOperatorS3.send(
         new ListObjectsV2Command({
           Bucket: csrReceivedBucket,
+        }),
+      ),
+    ).rejects.toThrow(/not authorized/);
+  });
+
+  it('allows s3:ListBucket on csr-validated', async () => {
+    await expect(
+      l3IssueRevokeOperatorS3.send(
+        new ListObjectsV2Command({
+          Bucket: csrValidatedBucket,
         }),
       ),
     ).resolves.toBeDefined();
