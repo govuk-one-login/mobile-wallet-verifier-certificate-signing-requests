@@ -304,10 +304,11 @@ Resources:
       Role: !GetAtt CsrValidatorFunctionRole.Arn
       VpcConfig:
         SecurityGroupIds:
-          - Fn::ImportValue: !Sub "${VpcStackName}-AWSServicesEndpointSecurityGroupId"
-        SubnetIds: !Split
-          - ","
-          - Fn::ImportValue: !Sub "${VpcStackName}-PrivateSubnetIds"
+          - Fn::ImportValue: !Sub ${VpcStackName}-AWSServicesEndpointSecurityGroupId
+        SubnetIds:
+          - Fn::ImportValue: !Sub ${VpcStackName}-PrivateSubnetIdA
+          - Fn::ImportValue: !Sub ${VpcStackName}-PrivateSubnetIdB
+          - Fn::ImportValue: !Sub ${VpcStackName}-PrivateSubnetIdC
 
 
 Outputs:
