@@ -316,7 +316,7 @@ Resources:
         Target: es2022
         Sourcemap: false
         EntryPoints:
-          - src/csr-validator/handler.ts
+          - src/functions/csr-validator/handler.ts
       checkov:
         skip:
           - id: CKV_AWS_115
@@ -330,6 +330,8 @@ Resources:
         - !Ref CodeSigningConfigArn
         - !Ref AWS::NoValue
       Role: !GetAtt CsrValidatorFunctionRole.Arn
+      LoggingConfig:
+        LogGroup: !Ref CsrValidatorFunctionLogGroup
       VpcConfig:
         SecurityGroupIds:
           - Fn::ImportValue: !Sub ${VpcStackName}-AWSServicesEndpointSecurityGroupId

@@ -21,7 +21,7 @@ jobs:
     name: SonarQube Scan
     uses: ./.github/workflows/job-quality-checks.yml
     with:
-      RUN_SONARQUBE: "true"
+      RUN_SONARQUBE: true
       WORKING_DIRECTORY: ./
     secrets: inherit
 
