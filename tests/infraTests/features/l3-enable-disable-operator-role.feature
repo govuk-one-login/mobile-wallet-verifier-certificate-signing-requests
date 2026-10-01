@@ -1,0 +1,28 @@
+Feature: L3EnableDisableOperatorRole Infrastructure
+
+  Background:
+    Given the CloudFormation template is loaded
+
+  Scenario: IAM role has correct configuration
+    Then the "L3EnableDisableOperatorRole" role should exist with type "AWS::IAM::Role"
+    And the "L3EnableDisableOperatorRole" role should allow sts:AssumeRole from account root
+    And the "L3EnableDisableOperatorRole" role should have permissions boundary applied
+
+  Scenario: IAM role has correct S3 policies
+    Then the "L3EnableDisableOperatorRole" role should have policy "L3EnableDisableOperatorS3AccessReceivedBucket" with actions:
+      | action      |
+      | s3:PutObject |
+      | s3:ListBucket |
+    And the "L3EnableDisableOperatorRole" role should have policy "L3EnableDisableOperatorS3AccessValidatedBucket" with actions:
+      | action       |
+      | s3:GetObject  |
+      | s3:ListBucket |
+
+  Scenario: IAM role has correct KMS policies
+    Then the "L3EnableDisableOperatorRole" role should have policy "L3EnableDisableOperatorKMSAccessReceivedBucket" with actions:
+      | action               |
+      | kms:Encrypt           |
+      | kms:GenerateDataKey   |
+    And the "L3EnableDisableOperatorRole" role should have policy "L3EnableDisableOperatorAccessValidatedBucket" with actions:
+      | action     |
+      | kms:Decrypt |
