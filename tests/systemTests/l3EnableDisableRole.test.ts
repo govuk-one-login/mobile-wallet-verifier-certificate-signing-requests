@@ -15,7 +15,7 @@ if (!AWS_ACCOUNT_ID) throw new Error('AWS_ACCOUNT_ID env var is required');
 
 const csrReceivedBucket = `${AWS_ACCOUNT_ID}-${STACK_NAME}-csr-received`;
 const csrValidatedBucket = `${AWS_ACCOUNT_ID}-${STACK_NAME}-csr-validated`;
-const roleArn = `arn:aws:iam::${AWS_ACCOUNT_ID}:role/${STACK_NAME}-Person1Role`;
+const roleArn = `arn:aws:iam::${AWS_ACCOUNT_ID}:role/${STACK_NAME}-L3EnableDisableOperatorRole`;
 
 const fixtures = {
   [csrReceivedBucket]: ['incoming/test.csr'],
@@ -25,11 +25,11 @@ const fixtures = {
 // CLI role client — uses ambient credentials from the shell environment
 const cliS3 = new S3Client({ region: AWS_REGION });
 
-// Person1 assumed-role client — populated in beforeAll
-let person1S3: S3Client;
+// L3EnableDisableOperatorS3 assumed-role client — populated in beforeAll
+let l3EnableDisableOperatorS3: S3Client;
 
 beforeAll(async () => {
-  // Assume Person1 role
+  // Assume L3EnableDisableOperatorRole
   const sts = new STSClient({ region: AWS_REGION });
   const { Credentials } = await sts.send(
     new AssumeRoleCommand({
@@ -37,7 +37,7 @@ beforeAll(async () => {
       RoleSessionName: 'person1-system-test',
     }),
   );
-  person1S3 = new S3Client({
+  l3EnableDisableOperatorS3 = new S3Client({
     region: AWS_REGION,
     credentials: {
       accessKeyId: Credentials!.AccessKeyId!,
@@ -66,7 +66,7 @@ afterAll(async () => {
 describe('Person1 role S3 permissions', () => {
   it('allows s3:PutObject on csr-received/incoming/*', async () => {
     await expect(
-      person1S3.send(
+      l3EnableDisableOperatorS3.send(
         new PutObjectCommand({
           Bucket: csrReceivedBucket,
           Key: 'incoming/test.csr',
@@ -78,7 +78,7 @@ describe('Person1 role S3 permissions', () => {
 
   it('allows s3:GetObject on csr-validated/validated/*.json', async () => {
     await expect(
-      person1S3.send(
+      l3EnableDisableOperatorS3.send(
         new GetObjectCommand({
           Bucket: csrValidatedBucket,
           Key: 'validated/test.json',
@@ -89,7 +89,7 @@ describe('Person1 role S3 permissions', () => {
 
   it('allows s3:GetObject on csr-validated/failed/*.json', async () => {
     await expect(
-      person1S3.send(
+      l3EnableDisableOperatorS3.send(
         new GetObjectCommand({
           Bucket: csrValidatedBucket,
           Key: 'failed/test.json',
@@ -100,7 +100,7 @@ describe('Person1 role S3 permissions', () => {
 
   it('denies s3:GetObject on csr-received', async () => {
     await expect(
-      person1S3.send(
+      l3EnableDisableOperatorS3.send(
         new GetObjectCommand({
           Bucket: csrReceivedBucket,
           Key: 'incoming/test.csr',
@@ -109,13 +109,25 @@ describe('Person1 role S3 permissions', () => {
     ).rejects.toThrow(/not authorized/);
   });
 
-  it('denies s3:ListBucket on csr-received', async () => {
+  it('denies s3:PutObject on csr-validated', async () => {
     await expect(
-      person1S3.send(
+      l3EnableDisableOperatorS3.send(
+        new PutObjectCommand({
+          Bucket: csrValidatedBucket,
+          Key: 'validated/test.json',
+          Body: 'test',
+        }),
+      ),
+    ).rejects.toThrow(/not authorized/);
+  });
+
+  it('allows s3:ListBucket on csr-received', async () => {
+    await expect(
+      l3EnableDisableOperatorS3.send(
         new ListObjectsV2Command({
           Bucket: csrReceivedBucket,
         }),
       ),
-    ).rejects.toThrow(/not authorized/);
+    ).resolves.toBeDefined();
   });
 });
