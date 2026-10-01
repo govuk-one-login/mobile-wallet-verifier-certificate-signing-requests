@@ -1,0 +1,80 @@
+name: Validate + Security Scan SAM Template
+
+on:
+  workflow_call:
+    inputs:
+      AWS_REGION:
+        description: The AWS region
+        type: string
+        default: eu-west-2
+      TEMPLATE_PATH:
+        description: Path to the SAM template
+        type: string
+      BUILD_TEMPLATE:
+        description: Whether to build the template
+        type: boolean
+        default: false
+    outputs:
+      template-built:
+        description: Whether the template was built
+        value: ${{ jobs.validate.outputs.template-built }}
+
+jobs:
+  validate:
+    name: Validate, security scan and build SAM Template
+    runs-on: ubuntu-24.04
+    outputs:
+      template-built: ${{ steps.build.outputs.built }}
+    env:
+      SAM_CLI_TELEMETRY: 0
+      TEMPLATE_PATH: ${{ inputs.TEMPLATE_PATH }}
+      AWS_REGION: ${{ inputs.AWS_REGION }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Setup AWS SAM CLI
+        uses: aws-actions/setup-sam@89ddb14d60e682855e3fea4be85b3c56485de310 # v2
+
+      - name: SAM Validate
+        run: sam validate --lint --template "$TEMPLATE_PATH" --region "$AWS_REGION"
+
+      - name: Run cfn-lint
+        run: |
+          pip install --only-binary :all: cfn-lint==1.57.1
+          cfn-lint "$TEMPLATE_PATH"
+
+      - name: Install Checkov
+        run: |
+          pip install --only-binary :all: checkov==3.3.20
+
+      - name: Run Checkov security scan
+        run: |
+          checkov -f "$TEMPLATE_PATH" \
+            --quiet --compact \
+            --skip-check CKV_AWS_116,CKV_AWS_117,CKV_AWS_124,CKV_AWS_144,CKV_AWS_145 \
+            --framework cloudformation
+
+      - name: Setup Node
+        if: inputs.BUILD_TEMPLATE
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          cache: npm
+          cache-dependency-path: package-lock.json
+          node-version-file: .nvmrc
+
+      - name: Install dependencies
+        if: inputs.BUILD_TEMPLATE
+        run: npm ci --ignore-scripts
+
+      - name: SAM Build
+        id: build
+        if: inputs.BUILD_TEMPLATE
+        run: |
+          sam build --template "$TEMPLATE_PATH"
+          echo "built=true" >> "$GITHUB_OUTPUT"

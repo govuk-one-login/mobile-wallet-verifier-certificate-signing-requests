@@ -1,0 +1,54 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "template.yaml"
+      - ".github/workflows/deploy.yml"
+      - ".github/workflows/job-validate-template.yml"
+      - ".github/workflows/job_upload-sam-artifact.yml"
+
+  workflow_dispatch:
+    inputs:
+      target_environment:
+        description: Target environment
+        required: true
+        default: build
+        type: choice
+        options:
+          - build
+
+permissions:
+  contents: read
+  id-token: write
+  packages: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  validate-csr-template:
+    name: Validate CSR Template
+    uses: ./.github/workflows/job-validate-template.yml
+    with:
+      TEMPLATE_PATH: template.yaml
+      AWS_REGION: eu-west-2
+      BUILD_TEMPLATE: true
+
+  upload-csr-sam-artifact:
+    name: Upload CSR Build Artifact
+    needs: validate-csr-template
+    permissions:
+      id-token: write
+      contents: read
+    uses: ./.github/workflows/job_upload-sam-artifact.yml
+    with:
+      WORKING_DIRECTORY: ./
+      TEMPLATE_NAME: template.yaml
+    secrets:
+      ARTIFACT_BUCKET: ${{ secrets.CSR_BUILD_ARTIFACT_BUCKET }}
+      GH_ACTIONS_ROLE_ARN: ${{ secrets.CSR_BUILD_GH_ACTIONS_ROLE_ARN }}
+      SIGNING_PROFILE_NAME: ${{ secrets.CSR_BUILD_SIGNING_PROFILE_NAME }}
