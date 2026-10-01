@@ -6,7 +6,10 @@
   "scripts": {
     "postinstall": "husky || true",
     "build": "mkdir -p dist && cp -f open-api-spec.yaml dist/ && node build.mjs",
-    "test": "./node_modules/.bin/vitest run",
+    "test": "npm run test:infra",
+    "test:infra": "./node_modules/.bin/vitest run --project infra",
+    "test:system": "./node_modules/.bin/vitest run --project system",
+    "test:all": "./node_modules/.bin/vitest run",
     "lint": "./node_modules/.bin/eslint .",
     "format": "./node_modules/.bin/prettier --write '**/*.{json,md,ts}'",
     "format:check": "./node_modules/.bin/prettier --check '**/*.{json,md,ts}'"
