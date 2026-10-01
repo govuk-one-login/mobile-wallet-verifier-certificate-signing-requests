@@ -7,8 +7,6 @@ import { AsnConvert } from '@peculiar/asn1-schema';
 import { Attribute, AttributeValue, Extensions } from '@peculiar/asn1-x509';
 import { buildCsr, derOf, mutateCsr, toPem } from './utils/builders.ts';
 
-// Hosts with a strict crypto policy (e.g. Fedora DEFAULT) refuse SHA-1
-// signatures, so the SHA-1 fixture cannot be generated there.
 const sha1SigningSupported = await buildCsr({ hash: 'SHA-1' }).then(
   () => true,
   () => false,
@@ -68,7 +66,6 @@ function withNonMinimalOuterLength(der: Uint8Array): Uint8Array {
   ]);
 }
 
-/** Builds a passing CSR whose base64 body ends in `=` padding. */
 async function buildPaddedCsr(): Promise<string> {
   for (let attempt = 1; attempt <= 20; attempt++) {
     const subject = subjectWith({ cn: 'A'.repeat(attempt) });
@@ -144,8 +141,6 @@ describe('validate-csr — format & signature checks', () => {
     expectSinglePemFailure(await runOn('not a pem file'));
   });
 
-  // The stored bytes must be readable by `openssl req -in`, which accepts
-  // none of the following three forms.
   it.each([
     { scenario: 'before', wrap: (pem: string) => `\u00a0${pem}` },
     { scenario: 'after', wrap: (pem: string) => `${pem}\u00a0` },
@@ -367,8 +362,6 @@ describe('validate-csr — Subject DN checks', () => {
   });
 });
 
-// Fixtures encode ASCII values as PrintableString, while OpenSSL emits
-// UTF8String. Re-encoding breaks the signature, so only the DN rules are read.
 describe('validate-csr — Subject DN string encodings', () => {
   it.each(['utf8String', 'bmpString', 'ia5String'] as const)(
     'reads a CN encoded as %s',

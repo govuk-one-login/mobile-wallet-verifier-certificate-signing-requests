@@ -21,8 +21,6 @@ export interface CloudFormationTemplate {
   Conditions?: Record<string, unknown>;
 }
 
-// These tags are load-only: the helper never dumps YAML, so `identify` always
-// returns false so the tag is never selected when representing a JS value.
 const LOAD_ONLY = () => false;
 
 // Handle CloudFormation intrinsic functions that can appear in different contexts

@@ -1,10 +1,3 @@
-/**
- * OpenSSL interop tests.
- *
- * Asserts that CSRs produced by a real `openssl req` invocation are
- * accepted (or rejected) by the validator exactly as the synthetic
- * fixtures are.
- */
 import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';

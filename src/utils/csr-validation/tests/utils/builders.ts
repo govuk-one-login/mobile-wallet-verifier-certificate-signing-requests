@@ -1,8 +1,3 @@
-/**
- * Programmatic CSR fixture builders. Each helper produces a PEM string for
- * a specific scenario in the validator test suite — keeps test data
- * deterministic without committing binary fixtures.
- */
 import * as x509 from '@peculiar/x509';
 import { AsnConvert } from '@peculiar/asn1-schema';
 import { CertificationRequest } from '@peculiar/asn1-csr';
@@ -79,10 +74,6 @@ function signingAlgorithmFor(
   return { name: 'ECDSA', hash: { name: hash } } as EcdsaParams;
 }
 
-/**
- * Returns a PEM in which the final byte of the signature has been flipped,
- * producing a parseable but signature-invalid CSR.
- */
 function tamper(csr: x509.Pkcs10CertificateRequest): string {
   const der = new Uint8Array(csr.rawData);
   der[der.length - 1] = der[der.length - 1]! ^ 0xff;
@@ -95,11 +86,6 @@ export function toPem(der: Uint8Array): string {
   return `-----BEGIN CERTIFICATE REQUEST-----\n${lines}\n-----END CERTIFICATE REQUEST-----\n`;
 }
 
-/**
- * Re-encodes a CSR after mutating its ASN.1 structure. The signature is not
- * recomputed, so mutated CSRs also fail FORMAT.SIGNATURE unless the mutation
- * only touches the signature itself.
- */
 export function mutateCsr(
   pem: string,
   mutate: (asn: CertificationRequest) => void,
@@ -110,7 +96,6 @@ export function mutateCsr(
   return toPem(new Uint8Array(AsnConvert.serialize(asn)));
 }
 
-/** Decodes a PEM fixture to its DER bytes; throws if the fixture is not PEM. */
 export function derOf(pem: string): Uint8Array {
   const result = decodePem(pem);
   if (result.isError) throw new Error(result.value);
