@@ -24,3 +24,7 @@ Feature: L3IssueRevokeOperatorRole Infrastructure
     Then the "L3IssueRevokeOperatorRole" role should have policy "L3IssueRevokeOperatorAccessValidatedBucket" with actions:
       | action     |
       | kms:Decrypt |
+
+  Scenario: IAM role trust policy contains the correct SSO principal
+    Then the "L3IssueRevokeOperatorRole" trust policy should contain SSO principal matching "AWSReservedSSO_ApprovedMobWalletCAIssueRevoke"
+    And the "L3IssueRevokeOperatorRole" trust policy should not contain SSO principal matching "AWSReservedSSO_ApprovedMobWalletCAEnableDisable"

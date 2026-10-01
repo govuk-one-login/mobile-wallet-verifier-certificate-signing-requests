@@ -88,6 +88,42 @@ const makePolicyAssertion = () => {
   };
 };
 
+const getTrustPolicyPrincipalArns = (roleName: string): string[] => {
+  const role = template.Resources[roleName] as Record<string, unknown>;
+  const properties = role.Properties as Record<string, unknown>;
+  const doc = properties.AssumeRolePolicyDocument as Record<string, unknown>;
+  const statements = doc.Statement as Record<string, unknown>[];
+  return statements.flatMap((s) => {
+    const condition = s.Condition as Record<string, unknown> | undefined;
+    const arnLike = condition?.ArnLike as Record<string, unknown> | undefined;
+    const arns = arnLike?.['aws:PrincipalARN'];
+    return Array.isArray(arns) ? (arns as string[]) : arns ? [arns as string] : [];
+  });
+};
+
+const SSO_PRINCIPAL_PATTERN =
+  /^the "([^"]+)" trust policy should (contain|not contain) SSO principal matching "([^"]+)"$/;
+
+const assertSsoPrincipal = (
+  then: (p: RegExp, fn: (name: string, assertion: string, fragment: string) => void) => void,
+  and: (p: RegExp, fn: (name: string, assertion: string, fragment: string) => void) => void,
+) => {
+  const check = (name: string, assertion: string, fragment: string) => {
+    const arns = getTrustPolicyPrincipalArns(name);
+    const matches = arns.some((arn) => {
+      const str = typeof arn === 'string' ? arn : (arn as Record<string, string>)['Fn::Sub'] ?? '';
+      return str.includes(fragment);
+    });
+    if (assertion === 'contain') {
+      expect(matches).toBe(true);
+    } else {
+      expect(matches).toBe(false);
+    }
+  };
+  then(SSO_PRINCIPAL_PATTERN, check);
+  and(SSO_PRINCIPAL_PATTERN, check);
+};
+
 defineFeature(l3EnableDisableFeature, (test) => {
   test('IAM role has correct configuration', ({ given, then, and }) => {
     loadTemplate(given);
@@ -108,6 +144,11 @@ defineFeature(l3EnableDisableFeature, (test) => {
     const assert = makePolicyAssertion();
     then(POLICY_ACTIONS_PATTERN, assert);
     and(POLICY_ACTIONS_PATTERN, assert);
+  });
+
+  test('IAM role trust policy contains the correct SSO principal', ({ given, then, and }) => {
+    loadTemplate(given);
+    assertSsoPrincipal(then, and);
   });
 });
 
@@ -131,5 +172,10 @@ defineFeature(l3IssueRevokeFeature, (test) => {
     loadTemplate(given);
     const assert = makePolicyAssertion();
     then(POLICY_ACTIONS_PATTERN, assert);
+  });
+
+  test('IAM role trust policy contains the correct SSO principal', ({ given, then, and }) => {
+    loadTemplate(given);
+    assertSsoPrincipal(then, and);
   });
 });

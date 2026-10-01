@@ -125,13 +125,6 @@ Resources:
               AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
             Action: kms:*
             Resource: "*"
-          - Effect: Allow
-            Principal:
-              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:role/${AWS::StackName}-Person1Role"
-            Action:
-              - kms:GenerateDataKey
-              - kms:Encrypt
-            Resource: "*"
       Tags:
         - Key: Name
           Value: !Sub "${AWS::StackName}-CsrReceivedBucketKmsKey"
@@ -157,11 +150,6 @@ Resources:
             Principal:
               AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
             Action: kms:*
-            Resource: "*"
-          - Effect: Allow
-            Principal:
-              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:role/${AWS::StackName}-Person1Role"
-            Action: kms:Decrypt
             Resource: "*"
       Tags:
         - Key: Name

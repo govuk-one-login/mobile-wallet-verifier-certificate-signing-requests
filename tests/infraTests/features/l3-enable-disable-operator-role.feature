@@ -26,3 +26,7 @@ Feature: L3EnableDisableOperatorRole Infrastructure
     And the "L3EnableDisableOperatorRole" role should have policy "L3EnableDisableOperatorAccessValidatedBucket" with actions:
       | action     |
       | kms:Decrypt |
+
+  Scenario: IAM role trust policy contains the correct SSO principal
+    Then the "L3EnableDisableOperatorRole" trust policy should contain SSO principal matching "AWSReservedSSO_ApprovedMobWalletCAEnableDisable"
+    And the "L3EnableDisableOperatorRole" trust policy should not contain SSO principal matching "AWSReservedSSO_ApprovedMobWalletCAIssueRevoke"
