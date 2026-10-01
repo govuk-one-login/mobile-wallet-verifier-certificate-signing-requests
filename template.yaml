@@ -103,7 +103,8 @@ Globals:
     AutoPublishAlias: live
     DeploymentPreference:
       Enabled: !If [IsIntegrationOrProd, true, false]
-      Type: !Ref LambdaDeploymentPreference
+      Type: !If [IsIntegrationOrProd, !Ref Linear20PercentEvery1Minute, !Ref LambdaDeploymentPreference]
+      Role: !GetAtt CodeDeployServiceRole.Arn
 
 Resources:
   CsrReceivedBucketKmsKey:
@@ -249,6 +250,33 @@ Resources:
           Value: Store validated CSRs
 
 
+
+  Linear20PercentEvery1Minute:
+    Type: AWS::CodeDeploy::DeploymentConfig
+    Properties:
+      ComputePlatform: Lambda
+      DeploymentConfigName: !Sub ${AWS::StackName}-Linear20PercentEvery1Minute
+      TrafficRoutingConfig:
+        TimeBasedLinear:
+          LinearInterval: 1
+          LinearPercentage: 20
+        Type: TimeBasedLinear
+
+  CodeDeployServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - codedeploy.amazonaws.com
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSCodeDeployRoleForLambda
+      PermissionsBoundary: !If [UsePermissionsBoundary, !Ref PermissionsBoundary, !Ref AWS::NoValue]
 
   CsrValidatorFunctionLogGroup:
     Type: AWS::Logs::LogGroup
