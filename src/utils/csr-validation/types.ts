@@ -1,7 +1,3 @@
-/**
- * Shared types for the CSR validator.
- */
-
 export type CheckStatus = 'passed' | 'failed' | 'skipped';
 
 export type RuleId =
@@ -56,9 +52,5 @@ export interface ValidationReport {
   violations: Violation[];
   checks: RuleResult[];
   metadata?: CsrMetadata;
-  /**
-   * Lowercase hex SHA-256 of the DER decoded from the PEM body. Present
-   * whenever PEM decoding succeeded, even if the DER is not a valid CSR.
-   */
   sha256?: string;
 }

@@ -7,10 +7,8 @@ const OID_CN = '2.5.4.3';
 const OID_O = '2.5.4.10';
 const OID_C = '2.5.4.6';
 
-/** The single source of truth for the required Subject DN country code. */
 export const REQUIRED_COUNTRY = 'GB';
 
-/** Order in which DN attributes are displayed in the report. */
 const DN_DISPLAY_ORDER: { oid: string; name: string }[] = [
   { oid: OID_CN, name: 'CN' },
   { oid: OID_O, name: 'O' },
@@ -24,13 +22,6 @@ interface ParsedAttribute {
   value: string;
 }
 
-/**
- * Validates that the Subject DN contains exactly the 3 mandatory attributes
- * (CN, O, C) — no extras, no missing, no duplicates — and that each value
- * satisfies its content rule.
- *
- * Returns parsed DN attributes with per-attribute status for the report.
- */
 export function checkSubjectDn(
   rawCsr: Uint8Array,
   reporter: Reporter,
@@ -38,9 +29,6 @@ export function checkSubjectDn(
   reporter.markEvaluated('DN.ATTRIBUTES');
   const attrs = parseSubject(rawCsr);
   if (!checkAttributeSet(attrs, reporter)) {
-    // Value checks require exactly the expected attributes — skip when
-    // the attribute set itself is wrong (missing, extra, or duplicated).
-    // DN.C and DN.NONEMPTY remain skipped.
     return buildDnAttributes(attrs, 'skipped');
   }
   reporter.markEvaluated('DN.C', 'DN.NONEMPTY');
@@ -89,7 +77,6 @@ function parseSubject(rawCsr: Uint8Array): ParsedAttribute[] {
   return out;
 }
 
-/** ASN.1 DirectoryString variants exposed by @peculiar/asn1-x509 AttributeValue. */
 const ASN1_STRING_KEYS = [
   'printableString',
   'utf8String',

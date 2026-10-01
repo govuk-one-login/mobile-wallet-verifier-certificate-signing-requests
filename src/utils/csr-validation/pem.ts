@@ -1,17 +1,10 @@
 import { errorResult, Result, successResult } from '../result/result.ts';
 
-/** One block whose body is one or more non-empty base64 lines. */
 const PEM_RE =
   /^-----BEGIN CERTIFICATE REQUEST-----\r?\n((?:[A-Za-z0-9+/=]+\r?\n)+)-----END CERTIFICATE REQUEST-----\r?\n?$/;
 
-/** Only ASCII whitespace may surround the block; OpenSSL rejects any other. */
 const ASCII_WHITESPACE = new Set([' ', '\t', '\r', '\n']);
 
-/**
- * Verifies that the input is a single, well-formed PEM-encoded CSR block
- * and returns the decoded DER bytes, or the reason the structure is invalid.
- * The reason is logged, so it never quotes the PEM markers or the input.
- */
 export function decodePem(input: string): Result<Uint8Array, string> {
   const trimmed = trimAsciiWhitespace(input) + '\n';
   const match = PEM_RE.exec(trimmed);

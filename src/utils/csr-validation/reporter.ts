@@ -1,13 +1,5 @@
 import type { RuleId, Violation } from './types.ts';
 
-/**
- * Aggregates rule violations during a validation run. Checks call `add` for
- * each violation found; the orchestrator drains the list once all checks
- * have run, so violations are reported together rather than failing fast.
- *
- * Rules are marked as evaluated via `markEvaluated` so that `finalise` can
- * distinguish "passed" from "skipped" (never reached due to early exit).
- */
 export class Reporter {
   private readonly items: Violation[] = [];
   private readonly evaluated = new Set<RuleId>();

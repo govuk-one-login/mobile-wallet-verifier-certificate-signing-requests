@@ -1,12 +1,7 @@
 import type { DnAttribute } from './types.ts';
 
-/** Characters RFC 4514 requires to be escaped wherever they appear. */
 const ALWAYS_ESCAPED = new Set(['"', '+', ',', ';', '<', '>', '\\']);
 
-/**
- * Renders parsed Subject DN attributes as a single RFC 4514-escaped string,
- * in the order given (`CN=…,O=…,C=…` for a validated DVS subject).
- */
 export function formatSubjectDn(attrs: readonly DnAttribute[]): string {
   return attrs
     .map(({ name, value }) => `${name}=${escapeValue(value)}`)

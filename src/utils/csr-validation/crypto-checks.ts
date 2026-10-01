@@ -4,10 +4,6 @@ import type { Reporter } from './reporter.ts';
 const REQUIRED_CURVE = 'P-256';
 const REQUIRED_HASH = 'SHA-256';
 
-/**
- * Independent EC P-256 (KEY.CURVE) and SHA-256 signature (KEY.HASH) checks,
- * so a CSR failing both reports both violations.
- */
 export async function checkCryptoProfile(
   csr: Pkcs10CertificateRequest,
   reporter: Reporter,

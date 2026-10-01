@@ -1,6 +1,3 @@
-/**
- * DVS Organisation CA CSR validator — pure validation, no I/O.
- */
 import 'reflect-metadata';
 import * as x509 from '@peculiar/x509';
 import { AsnConvert } from '@peculiar/asn1-schema';
@@ -59,10 +56,6 @@ export const RULE_DEFINITIONS: readonly RuleDefinition[] = [
   },
 ] as const;
 
-/**
- * Validates PEM text against the DVS CSR policy, collecting every violation
- * in one pass. Never throws for a bad CSR — violations are data.
- */
 export async function validateCsrText(text: string): Promise<ValidationReport> {
   const reporter = new Reporter();
   const pemResult = decodePem(text);
@@ -106,11 +99,6 @@ async function runChecks(
   return { subjectDn, extensions };
 }
 
-/**
- * Runs a check and records an unexpected exception (e.g. a CSR field the
- * library cannot decode) as a violation of `rule`, so a malformed CSR yields
- * a report instead of an error.
- */
 async function guarded<T>(
   rule: RuleId,
   reporter: Reporter,
@@ -143,11 +131,6 @@ function parseCsr(
   }
 }
 
-/**
- * Requires the bytes to be exactly one strict-DER CertificationRequest, so the
- * SHA-256 fingerprint matches `openssl req -outform DER`. Trailing bytes and
- * non-canonical (BER) encodings change on re-serialisation and are rejected.
- */
 function assertStrictDer(der: Uint8Array): void {
   const parsed = AsnConvert.parse(der, CertificationRequest);
   const canonical = new Uint8Array(AsnConvert.serialize(parsed));
