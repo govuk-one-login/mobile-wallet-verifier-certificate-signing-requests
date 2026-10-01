@@ -282,6 +282,11 @@ Resources:
             Principal:
               AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
             Action: sts:AssumeRole
+            Condition:
+              ArnLike:
+                aws:PrincipalARN:
+                  - !Sub "arn:aws:iam::${AWS::AccountId}:role/aws-reserved/sso.amazonaws.com/*/AWSReservedSSO_AdministratorAccessPermission*"
+                  - !Sub "arn:aws:iam::${AWS::AccountId}:role/aws-reserved/sso.amazonaws.com/*/AWSReservedSSO_ApprovedMobWalletCAEnableDisable*"
       Policies:
         - PolicyName: L3EnableDisableOperatorS3AccessReceivedBucket
           PolicyDocument:
@@ -340,6 +345,11 @@ Resources:
             Principal:
               AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
             Action: sts:AssumeRole
+            Condition:
+              ArnLike:
+                aws:PrincipalARN:
+                  - !Sub "arn:aws:iam::${AWS::AccountId}:role/aws-reserved/sso.amazonaws.com/*/AWSReservedSSO_AdministratorAccessPermission*"
+                  - !Sub "arn:aws:iam::${AWS::AccountId}:role/aws-reserved/sso.amazonaws.com/*/AWSReservedSSO_ApprovedMobWalletCAIssueRevoke*"
       Policies:
         - PolicyName: L3IssueRevokeOperatorS3AccessValidatedBucket
           PolicyDocument:
