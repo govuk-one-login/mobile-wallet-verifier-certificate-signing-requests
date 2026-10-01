@@ -32,6 +32,12 @@ Parameters:
     Type: String
     Default: vpc
 
+  IntCaBackendStackName:
+    Description: |
+      The stack name of the Int CA backend where certificates issued bucket is deployed
+    Type: String
+    Default: dvs-int-ca-ddunford
+
   LambdaDeploymentPreference:
     Description: |
       Specifies the configuration to enable gradual Lambda deployments. Value can be 'AllAtOnce', a default deployment config, or name of custom DeploymentConfig.
@@ -366,6 +372,29 @@ Resources:
                   - kms:Decrypt
                 Resource:
                   - !GetAtt CsrValidatedBucketKmsKey.Arn
+        - PolicyName: L3IssueRevokeOperatorS3AccessIssuedCertsBucketGet
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: s3:GetObject
+                Resource: !Sub
+                  - "arn:aws:s3:::${BucketName}/issued/*"
+                  - BucketName: !ImportValue
+                      Fn::Sub: "${IntCaBackendStackName}-IssuedCertsBucketName"
+        - PolicyName: L3IssueRevokeOperatorS3AccessIssuedCertsBucketList
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: s3:ListBucket
+                Resource: !Sub
+                  - "arn:aws:s3:::${BucketName}"
+                  - BucketName: !ImportValue
+                      Fn::Sub: "${IntCaBackendStackName}-IssuedCertsBucketName"
+                Condition:
+                  StringLike:
+                    s3:prefix: "issued/"
 
 Outputs:
   CsrReceivedBucketName:

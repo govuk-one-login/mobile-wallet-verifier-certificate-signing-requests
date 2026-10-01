@@ -49,7 +49,11 @@ beforeAll(async () => {
   // Seed fixture objects into csr-validated using the CLI role
   for (const key of fixtures[csrValidatedBucket]) {
     await cliS3.send(
-      new PutObjectCommand({ Bucket: csrValidatedBucket, Key: key, Body: 'test-fixture' }),
+      new PutObjectCommand({
+        Bucket: csrValidatedBucket,
+        Key: key,
+        Body: 'test-fixture',
+      }),
     );
   }
 });
