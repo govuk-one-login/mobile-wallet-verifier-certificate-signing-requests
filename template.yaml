@@ -272,46 +272,10 @@ Resources:
         - Key: Purpose
           Value: Store validated CSRs
 
-  CsrReceivedBucketPolicy:
-    Type: AWS::S3::BucketPolicy
-    Properties:
-      Bucket: !Ref CsrReceivedBucket
-      PolicyDocument:
-        Statement:
-          - Effect: Deny
-            Principal:
-              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:role/${AWS::StackName}-Person1Role"
-            Action: s3:PutObject
-            NotResource: !Sub "arn:aws:s3:::${CsrReceivedBucket}/incoming/*"
-          - Effect: Deny
-            Principal:
-              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:role/${AWS::StackName}-Person1Role"
-            Action: s3:ListBucket
-            Resource: !Sub "arn:aws:s3:::${CsrReceivedBucket}"
-
-  CsrValidatedBucketPolicy:
-    Type: AWS::S3::BucketPolicy
-    Properties:
-      Bucket: !Ref CsrValidatedBucket
-      PolicyDocument:
-        Statement:
-          - Effect: Deny
-            Principal:
-              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:role/${AWS::StackName}-Person1Role"
-            Action: s3:PutObject
-            Resource: !Sub "arn:aws:s3:::${CsrValidatedBucket}/*"
-          - Effect: Deny
-            Principal:
-              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:role/${AWS::StackName}-Person1Role"
-            Action: s3:GetObject
-            NotResource:
-              - !Sub "arn:aws:s3:::${CsrValidatedBucket}/validated/*.json"
-              - !Sub "arn:aws:s3:::${CsrValidatedBucket}/failed/*.json"
-
-  Person1Role:
+  L3EnableDisableOperatorRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub "${AWS::StackName}-Person1Role"
+      RoleName: !Sub "${AWS::StackName}-L3EnableDisableOperatorRole"
       PermissionsBoundary: !If
         - UsePermissionsBoundary
         - !Ref PermissionsBoundary
@@ -324,57 +288,80 @@ Resources:
               AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
             Action: sts:AssumeRole
       Policies:
-        - PolicyName: Person1S3Access
+        - PolicyName: L3EnableDisableOperatorS3AccessReceivedBucket
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action:
                   - s3:PutObject
+                  - s3:ListBucket
+                Resource:
+                  - !Sub "arn:aws:s3:::${CsrReceivedBucket}/*"
+                  - !Sub "arn:aws:s3:::${CsrReceivedBucket}"
+        - PolicyName: L3EnableDisableOperatorS3AccessValidatedBucket
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
                   - s3:GetObject
                   - s3:ListBucket
                 Resource:
-                  - !Sub "arn:aws:s3:::${AWS::AccountId}-*-csr-received/*"
-                  - !Sub "arn:aws:s3:::${AWS::AccountId}-*-csr-received"
-                  - !Sub "arn:aws:s3:::${AWS::AccountId}-*-csr-validated/*"
-                  - !Sub "arn:aws:s3:::${AWS::AccountId}-*-csr-validated"
+                  - !Sub "arn:aws:s3:::${CsrValidatedBucket}/*"
+                  - !Sub "arn:aws:s3:::${CsrValidatedBucket}"
+        - PolicyName: L3EnableDisableOperatorKMSAccessReceivedBucket
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - kms:Encrypt
+                  - kms:GenerateDataKey
+                Resource:
+                  - !GetAtt CsrReceivedBucketKmsKey.Arn
+        - PolicyName: L3EnableDisableOperatorAccessValidatedBucket
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - kms:Decrypt
+                Resource:
+                  - !GetAtt CsrValidatedBucketKmsKey.Arn
 
-  Person2Role:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: !Sub "${AWS::StackName}-Person2Role"
-      PermissionsBoundary: !If
-        - UsePermissionsBoundary
-        - !Ref PermissionsBoundary
-        - !Ref AWS::NoValue
-      AssumeRolePolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
-            Action: sts:AssumeRole
-      Policies:
-        - PolicyName: Person2S3Access
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: Allow
-                Action:
-                  - s3:PutObject
-                  - s3:GetObject
-                  - s3:ListBucket
-                Resource:
-                  - !Sub "arn:aws:s3:::${AWS::AccountId}-*-csr-received/*"
-                  - !Sub "arn:aws:s3:::${AWS::AccountId}-*-csr-received"
-                  - !Sub "arn:aws:s3:::${AWS::AccountId}-*-csr-validated/*"
-                  - !Sub "arn:aws:s3:::${AWS::AccountId}-*-csr-validated"
+  # Person2Role:
+  #   Type: AWS::IAM::Role
+  #   Properties:
+  #     RoleName: !Sub "${AWS::StackName}-Person2Role"
+  #     PermissionsBoundary: !If
+  #       - UsePermissionsBoundary
+  #       - !Ref PermissionsBoundary
+  #       - !Ref AWS::NoValue
+  #     AssumeRolePolicyDocument:
+  #       Version: "2012-10-17"
+  #       Statement:
+  #         - Effect: Allow
+  #           Principal:
+  #             AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+  #           Action: sts:AssumeRole
+  #     Policies:
+  #       - PolicyName: Person2S3Access
+  #         PolicyDocument:
+  #           Version: "2012-10-17"
+  #           Statement:
+  #             - Effect: Allow
+  #               Action:
+  #                 - s3:PutObject
+  #                 - s3:GetObject
+  #                 - s3:ListBucket
+  #               Resource:
+  #                 - !Sub "arn:aws:s3:::${AWS::AccountId}-*-csr-received/*"
+  #                 - !Sub "arn:aws:s3:::${AWS::AccountId}-*-csr-received"
+  #                 - !Sub "arn:aws:s3:::${AWS::AccountId}-*-csr-validated/*"
+  #                 - !Sub "arn:aws:s3:::${AWS::AccountId}-*-csr-validated"
 
 Outputs:
-  CsrReceivedBucketKmsKeyArn:
-    Description: ARN of the KMS key used for CsrReceivedBucket encryption
-    Value: !GetAtt CsrReceivedBucketKmsKey.Arn
-
   CsrReceivedBucketName:
     Description: Name of the S3 bucket to store CSRs received from external DVS organisations
     Value: !Ref CsrReceivedBucket
