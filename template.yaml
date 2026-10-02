@@ -36,7 +36,7 @@ Parameters:
     Description: |
       The stack name of the Int CA backend where certificates issued bucket is deployed
     Type: String
-    Default: dvs-int-ca-ddunford
+    Default: dvs-ca
 
   LambdaDeploymentPreference:
     Description: |
