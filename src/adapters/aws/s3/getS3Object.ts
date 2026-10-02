@@ -11,7 +11,7 @@ import { s3Client } from './s3Client.ts';
 export type GetS3ObjectInput = {
   bucket: string;
   key: string;
-  versionId?: string | undefined;
+  versionId?: string;
 };
 
 export const getS3Object = async (

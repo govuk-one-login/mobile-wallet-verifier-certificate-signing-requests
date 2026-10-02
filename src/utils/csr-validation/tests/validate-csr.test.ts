@@ -518,7 +518,7 @@ describe('validate-csr — pipeline enforcement', () => {
 describe('validate-csr — checks array and skipped state', () => {
   it('marks all 10 rules as passed for a valid CSR', async () => {
     const report = await runOn(await buildCsr());
-    expect(report.checks.length).toBe(10);
+    expect(report.checks).toHaveLength(10);
     for (const check of report.checks) {
       expect(check.status, `${check.rule} should be passed`).toBe('passed');
       expect(check.section).toBeTruthy();

@@ -4,10 +4,10 @@ import type { Reporter } from './reporter.ts';
 const REQUIRED_CURVE = 'P-256';
 const REQUIRED_HASH = 'SHA-256';
 
-export async function checkCryptoProfile(
+export function checkCryptoProfile(
   csr: Pkcs10CertificateRequest,
   reporter: Reporter,
-): Promise<void> {
+): void {
   reporter.markEvaluated('KEY.TYPE_EC');
   const algorithm = csr.publicKey.algorithm;
   if (algorithm.name !== 'ECDSA') {
@@ -15,7 +15,6 @@ export async function checkCryptoProfile(
       rule: 'KEY.TYPE_EC',
       message: `Public key algorithm must be EC (ECDSA); found '${algorithm.name}'.`,
     });
-    // Keep downstream profile rules skipped after an unsupported key type.
     return;
   }
   reporter.markEvaluated('KEY.CURVE', 'KEY.HASH');
