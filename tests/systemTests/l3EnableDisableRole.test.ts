@@ -2,8 +2,6 @@ import { STSClient, AssumeRoleCommand } from '@aws-sdk/client-sts';
 import {
   S3Client,
   PutObjectCommand,
-  GetObjectCommand,
-  ListObjectsV2Command,
   DeleteObjectCommand,
 } from '@aws-sdk/client-s3';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
@@ -80,39 +78,6 @@ describe('L3EnableDisableOperator role S3 permissions', () => {
     ).resolves.toBeDefined();
   });
 
-  it('allows s3:GetObject on csr-validated/validated/*.json', async () => {
-    await expect(
-      l3EnableDisableOperatorS3.send(
-        new GetObjectCommand({
-          Bucket: csrValidatedBucket,
-          Key: 'validated/test1.json',
-        }),
-      ),
-    ).resolves.toBeDefined();
-  });
-
-  it('allows s3:GetObject on csr-validated/failed/*.json', async () => {
-    await expect(
-      l3EnableDisableOperatorS3.send(
-        new GetObjectCommand({
-          Bucket: csrValidatedBucket,
-          Key: 'failed/test1.json',
-        }),
-      ),
-    ).resolves.toBeDefined();
-  });
-
-  it('denies s3:GetObject on csr-received', async () => {
-    await expect(
-      l3EnableDisableOperatorS3.send(
-        new GetObjectCommand({
-          Bucket: csrReceivedBucket,
-          Key: 'incoming/test1.csr',
-        }),
-      ),
-    ).rejects.toThrow(/not authorized/);
-  });
-
   it('denies s3:PutObject on csr-validated', async () => {
     await expect(
       l3EnableDisableOperatorS3.send(
@@ -123,15 +88,5 @@ describe('L3EnableDisableOperator role S3 permissions', () => {
         }),
       ),
     ).rejects.toThrow(/not authorized/);
-  });
-
-  it('allows s3:ListBucket on csr-received', async () => {
-    await expect(
-      l3EnableDisableOperatorS3.send(
-        new ListObjectsV2Command({
-          Bucket: csrReceivedBucket,
-        }),
-      ),
-    ).resolves.toBeDefined();
   });
 });

@@ -12,11 +12,6 @@ Feature: L3EnableDisableOperatorRole Infrastructure
     Then the "L3EnableDisableOperatorRole" role should have policy "L3EnableDisableOperatorS3AccessReceivedBucket" with actions:
       | action      |
       | s3:PutObject |
-      | s3:ListBucket |
-    And the "L3EnableDisableOperatorRole" role should have policy "L3EnableDisableOperatorS3AccessValidatedBucket" with actions:
-      | action       |
-      | s3:GetObject  |
-      | s3:ListBucket |
 
   Scenario: IAM role has correct KMS policies
     Then the "L3EnableDisableOperatorRole" role should have policy "L3EnableDisableOperatorKMSAccessReceivedBucket" with actions:

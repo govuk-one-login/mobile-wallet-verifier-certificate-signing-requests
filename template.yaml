@@ -287,17 +287,6 @@ Resources:
                 Resource:
                   - !Sub "arn:aws:s3:::${CsrReceivedBucket}/*"
                   - !Sub "arn:aws:s3:::${CsrReceivedBucket}"
-        - PolicyName: L3EnableDisableOperatorS3AccessValidatedBucket
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: Allow
-                Action:
-                  - s3:GetObject
-                  - s3:ListBucket
-                Resource:
-                  - !Sub "arn:aws:s3:::${CsrValidatedBucket}/*"
-                  - !Sub "arn:aws:s3:::${CsrValidatedBucket}"
         - PolicyName: L3EnableDisableOperatorKMSAccessReceivedBucket
           PolicyDocument:
             Version: "2012-10-17"
@@ -339,17 +328,6 @@ Resources:
                   - !Sub "arn:aws:iam::${AWS::AccountId}:role/aws-reserved/sso.amazonaws.com/*/AWSReservedSSO_AdministratorAccessPermission*"
                   - !Sub "arn:aws:iam::${AWS::AccountId}:role/aws-reserved/sso.amazonaws.com/*/AWSReservedSSO_ApprovedMobWalletCAIssueRevoke*"
       Policies:
-        - PolicyName: L3IssueRevokeOperatorS3AccessValidatedBucket
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: Allow
-                Action:
-                  - s3:GetObject
-                  - s3:ListBucket
-                Resource:
-                  - !Sub "arn:aws:s3:::${CsrValidatedBucket}/*"
-                  - !Sub "arn:aws:s3:::${CsrValidatedBucket}"
         - PolicyName: L3IssueRevokeOperatorAccessValidatedBucket
           PolicyDocument:
             Version: "2012-10-17"
@@ -359,29 +337,6 @@ Resources:
                   - kms:Decrypt
                 Resource:
                   - !GetAtt CsrValidatedBucketKmsKey.Arn
-        - PolicyName: L3IssueRevokeOperatorS3AccessIssuedCertsBucketGet
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: Allow
-                Action: s3:GetObject
-                Resource: !Sub
-                  - "arn:aws:s3:::${BucketName}/issued/*"
-                  - BucketName: !ImportValue
-                      Fn::Sub: "${IntCaBackendStackName}-IssuedCertsBucketName"
-        - PolicyName: L3IssueRevokeOperatorS3AccessIssuedCertsBucketList
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: Allow
-                Action: s3:ListBucket
-                Resource: !Sub
-                  - "arn:aws:s3:::${BucketName}"
-                  - BucketName: !ImportValue
-                      Fn::Sub: "${IntCaBackendStackName}-IssuedCertsBucketName"
-                Condition:
-                  StringLike:
-                    s3:prefix: "issued/"
 
   Linear20PercentEvery1Minute:
     Type: AWS::CodeDeploy::DeploymentConfig
