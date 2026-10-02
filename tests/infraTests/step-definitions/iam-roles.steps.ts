@@ -97,7 +97,11 @@ const getTrustPolicyPrincipalArns = (roleName: string): string[] => {
     const condition = s.Condition as Record<string, unknown> | undefined;
     const arnLike = condition?.ArnLike as Record<string, unknown> | undefined;
     const arns = arnLike?.['aws:PrincipalARN'];
-    return Array.isArray(arns) ? (arns as string[]) : arns ? [arns as string] : [];
+    return Array.isArray(arns)
+      ? (arns as string[])
+      : arns
+        ? [arns as string]
+        : [];
   });
 };
 
@@ -105,13 +109,22 @@ const SSO_PRINCIPAL_PATTERN =
   /^the "([^"]+)" trust policy should (contain|not contain) SSO principal matching "([^"]+)"$/;
 
 const assertSsoPrincipal = (
-  then: (p: RegExp, fn: (name: string, assertion: string, fragment: string) => void) => void,
-  and: (p: RegExp, fn: (name: string, assertion: string, fragment: string) => void) => void,
+  then: (
+    p: RegExp,
+    fn: (name: string, assertion: string, fragment: string) => void,
+  ) => void,
+  and: (
+    p: RegExp,
+    fn: (name: string, assertion: string, fragment: string) => void,
+  ) => void,
 ) => {
   const check = (name: string, assertion: string, fragment: string) => {
     const arns = getTrustPolicyPrincipalArns(name);
     const matches = arns.some((arn) => {
-      const str = typeof arn === 'string' ? arn : (arn as Record<string, string>)['Fn::Sub'] ?? '';
+      const str =
+        typeof arn === 'string'
+          ? arn
+          : ((arn as Record<string, string>)['Fn::Sub'] ?? '');
       return str.includes(fragment);
     });
     if (assertion === 'contain') {
@@ -146,7 +159,11 @@ defineFeature(l3EnableDisableFeature, (test) => {
     and(POLICY_ACTIONS_PATTERN, assert);
   });
 
-  test('IAM role trust policy contains the correct SSO principal', ({ given, then, and }) => {
+  test('IAM role trust policy contains the correct SSO principal', ({
+    given,
+    then,
+    and,
+  }) => {
     loadTemplate(given);
     assertSsoPrincipal(then, and);
   });
@@ -174,7 +191,11 @@ defineFeature(l3IssueRevokeFeature, (test) => {
     then(POLICY_ACTIONS_PATTERN, assert);
   });
 
-  test('IAM role trust policy contains the correct SSO principal', ({ given, then, and }) => {
+  test('IAM role trust policy contains the correct SSO principal', ({
+    given,
+    then,
+    and,
+  }) => {
     loadTemplate(given);
     assertSsoPrincipal(then, and);
   });
