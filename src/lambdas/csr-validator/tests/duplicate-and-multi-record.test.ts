@@ -195,11 +195,13 @@ describe('Handler - Duplicate uploads and multiple records', () => {
         }
       });
 
-      it('throws without processing the second record', () => {
+      it('still attempts the second record, then throws reporting both', () => {
         expect(lambdaError.message).toBe(
-          'Failed to get CSR object incoming/first.pem',
+          'Failed to process 2 of 2 records: ' +
+            'Failed to get CSR object incoming/first.pem; ' +
+            'Failed to get CSR object incoming/second.pem',
         );
-        expect(dependencies.getS3Object).toHaveBeenCalledTimes(1);
+        expect(dependencies.getS3Object).toHaveBeenCalledTimes(2);
         expect(dependencies.putS3Object).not.toHaveBeenCalled();
       });
     });

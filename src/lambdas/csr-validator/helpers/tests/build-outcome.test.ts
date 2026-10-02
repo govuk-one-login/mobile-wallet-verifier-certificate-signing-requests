@@ -7,7 +7,7 @@ const source: CsrSource = {
   bucket: 'mock-csr-received-bucket',
   key: 'incoming/org.pem',
   versionId: 'mockVersionId',
-  baseName: 'org',
+  keyStem: 'incoming/org',
 };
 
 describe('buildOutcome', () => {

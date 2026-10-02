@@ -66,10 +66,6 @@ describe('Handler - Non-PEM uploads', () => {
       scenario: 'a valid CSR prefixed with a non-breaking space',
       content: () => toBytes(`\u00a0${validPem}`),
     },
-    {
-      scenario: 'a valid CSR prefixed with a UTF-8 byte order mark',
-      content: () => new Uint8Array([0xef, 0xbb, 0xbf, ...toBytes(validPem)]),
-    },
   ])('Given $scenario at incoming/My File.pem', (scenario) => {
     const { content } = scenario;
     let uploadedBytes: Uint8Array;
@@ -89,10 +85,10 @@ describe('Handler - Non-PEM uploads', () => {
       });
     });
 
-    it('writes the uploaded bytes unchanged to failed/My File.pem first', () => {
+    it('writes the uploaded bytes unchanged to failed/incoming/My File.pem first', () => {
       expect(dependencies.putS3Object).toHaveBeenNthCalledWith(1, {
         bucket: VALIDATED_BUCKET,
-        key: 'failed/My File.pem',
+        key: 'failed/incoming/My File.pem',
         body: uploadedBytes,
         contentType: 'application/x-pem-file',
       });
@@ -103,7 +99,7 @@ describe('Handler - Non-PEM uploads', () => {
       const [, recordCall] = putCallsOf(dependencies);
 
       expect(putCallsOf(dependencies)).toHaveLength(2);
-      expect(recordCall!.key).toBe('failed/My File.json');
+      expect(recordCall!.key).toBe('failed/incoming/My File.json');
       expect(JSON.parse(recordCall!.body as string)).toStrictEqual({
         status: 'fail',
         sha256: null,
@@ -122,7 +118,7 @@ describe('Handler - Non-PEM uploads', () => {
         outcome: 'fail',
         sourceKey: 'incoming/My File.pem',
         sourceVersionId: VERSION_ID,
-        resultKey: 'failed/My File.json',
+        resultKey: 'failed/incoming/My File.json',
         violations: [{ rule: 'FORMAT.PEM' }],
       });
       expect(entry).not.toHaveProperty('sha256');
@@ -164,10 +160,10 @@ describe('Handler - Non-PEM uploads', () => {
       await handlerConstructor(dependencies, event, context);
     });
 
-    it('keys the outputs by the base name only', () => {
+    it('keys the outputs by the full source path, not the file name alone', () => {
       expect(putCallsOf(dependencies).map(({ key }) => key)).toStrictEqual([
-        'failed/request.pem',
-        'failed/request.json',
+        'failed/incoming/org-a/request.pem',
+        'failed/incoming/org-a/request.json',
       ]);
     });
   });
@@ -179,13 +175,13 @@ describe('Handler - Non-PEM uploads', () => {
       await handlerConstructor(dependencies, event, context);
     });
 
-    it('decodes the key and keys the outputs by the base name', () => {
+    it('decodes the key and keys the outputs by the full source path', () => {
       expect(dependencies.getS3Object).toHaveBeenCalledWith(
         expect.objectContaining({ key: 'incoming/café + co.v2.pem' }),
       );
       expect(putCallsOf(dependencies).map(({ key }) => key)).toStrictEqual([
-        'failed/café + co.v2.pem',
-        'failed/café + co.v2.json',
+        'failed/incoming/café + co.v2.pem',
+        'failed/incoming/café + co.v2.json',
       ]);
     });
   });

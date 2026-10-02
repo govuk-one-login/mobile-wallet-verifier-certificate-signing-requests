@@ -32,8 +32,27 @@ export const handlerConstructor = async (
     );
   }
 
+  const failures: Error[] = [];
   for (const record of event.Records) {
-    await processRecord(dependencies, configResult.value, record);
+    try {
+      await processRecord(dependencies, configResult.value, record);
+    } catch (error: unknown) {
+      const failure = error as Error;
+      failures.push(failure);
+      logger.error(LogMessage.CSR_VALIDATOR_RECORD_FAILED, {
+        errorMessage: failure.message,
+      });
+    }
+  }
+
+  if (failures.length === 1) {
+    throw failures[0]!;
+  }
+  if (failures.length > 1) {
+    throw new Error(
+      `Failed to process ${failures.length} of ${event.Records.length} records: ` +
+        failures.map((failure) => failure.message).join('; '),
+    );
   }
 };
 
@@ -90,6 +109,6 @@ const fetchCsr = async (
 };
 
 const decodeUtf8 = (bytes: Uint8Array): string =>
-  new TextDecoder('utf-8', { ignoreBOM: true }).decode(bytes);
+  new TextDecoder('utf-8').decode(bytes);
 
 export const handler = handlerConstructor.bind(null, runtimeDependencies);

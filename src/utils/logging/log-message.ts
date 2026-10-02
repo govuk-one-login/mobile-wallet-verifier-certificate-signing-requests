@@ -23,6 +23,11 @@ export class LogMessage implements LogAttributes {
     'Incoming S3 event record is malformed.',
   );
 
+  static readonly CSR_VALIDATOR_RECORD_FAILED = new LogMessage(
+    'CSR_VALIDATOR_RECORD_FAILED',
+    'Processing of an S3 event record failed; remaining records continue.',
+  );
+
   static readonly CSR_VALIDATOR_COMPLETED = new LogMessage(
     'CSR_VALIDATOR_COMPLETED',
     'CSR validation complete',

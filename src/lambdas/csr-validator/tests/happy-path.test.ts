@@ -147,6 +147,31 @@ describe('Handler - Happy path', () => {
     });
   });
 
+  describe('Given the uploaded PEM is prefixed with a UTF-8 byte order mark', () => {
+    let bomBytes: Uint8Array;
+
+    beforeEach(async () => {
+      bomBytes = new Uint8Array([0xef, 0xbb, 0xbf, ...csrBytes]);
+      dependencies = buildValidHandlerDependencies(bomBytes);
+      await handlerConstructor(dependencies, buildS3Event(), context);
+    });
+
+    it('validates the CSR rather than rejecting it as malformed', () => {
+      expect(consoleSpies.info).toHaveBeenCalledWithLogFields({
+        messageCode: 'CSR_VALIDATOR_COMPLETED',
+        outcome: 'pass',
+        resultKey: `validated/${sha256}.json`,
+      });
+    });
+
+    it('stores the fetched bytes byte-for-byte under the DER fingerprint', () => {
+      const [pemCall] = putCallsOf(dependencies);
+
+      expect(pemCall!.key).toBe(`validated/${sha256}.pem`);
+      expect(pemCall!.body).toBe(bomBytes);
+    });
+  });
+
   describe('Given the event record carries no version id', () => {
     beforeEach(async () => {
       const event = buildS3Event({ versionId: null });

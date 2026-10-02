@@ -52,7 +52,7 @@ export const buildOutcome = (
 
 const buildKeyStem = (source: CsrSource, report: ValidationReport): string => {
   if (!report.passed) {
-    return `${FAILED_PREFIX}/${report.sha256 ?? source.baseName}`;
+    return `${FAILED_PREFIX}/${report.sha256 ?? source.keyStem}`;
   }
   if (report.sha256 === undefined) {
     throw new Error('Validation report passed without a SHA-256 fingerprint');

@@ -12,7 +12,7 @@ export type CsrSource = {
   bucket: string;
   key: string;
   versionId: string | undefined;
-  baseName: string;
+  keyStem: string;
 };
 
 export const parseS3Record = (
@@ -26,13 +26,14 @@ export const parseS3Record = (
     return keyResult;
   }
   const key = keyResult.value;
-  const { name } = path.posix.parse(key);
+  const { dir, name } = path.posix.parse(key);
+  const fileName = name || 'unnamed';
 
   return successResult({
     bucket: record.s3.bucket.name,
     key,
     versionId: record.s3.object.versionId || undefined,
-    baseName: name,
+    keyStem: dir ? `${dir}/${fileName}` : fileName,
   });
 };
 
