@@ -47,7 +47,7 @@ describe('Handler - Validation failures', () => {
   };
 
   const resultRecord = () =>
-    JSON.parse(putCallsOf(dependencies)[1]!.body as string) as {
+    JSON.parse(putCallsOf(dependencies)[0]!.body as string) as {
       violations: ResultViolation[];
     };
 
@@ -79,8 +79,8 @@ describe('Handler - Validation failures', () => {
       );
     });
 
-    it('writes the uploaded bytes to failed/<sha256>.pem first', () => {
-      expect(dependencies.putS3Object).toHaveBeenNthCalledWith(1, {
+    it('writes the uploaded bytes to failed/<sha256>.pem second', () => {
+      expect(dependencies.putS3Object).toHaveBeenNthCalledWith(2, {
         bucket: VALIDATED_BUCKET,
         key: `failed/${sha256}.pem`,
         body: csrBytes,
@@ -88,8 +88,8 @@ describe('Handler - Validation failures', () => {
       });
     });
 
-    it('then writes the fail result record with every violation', () => {
-      const [, recordCall] = putCallsOf(dependencies);
+    it('writes the fail result record first, with every violation', () => {
+      const [recordCall] = putCallsOf(dependencies);
       const record = resultRecord();
 
       expect(putCallsOf(dependencies)).toHaveLength(2);
@@ -166,7 +166,7 @@ describe('Handler - Validation failures', () => {
     });
 
     it('writes a fail record under failed/<sha256> with a null subjectDn', () => {
-      const [pemCall, recordCall] = putCallsOf(dependencies);
+      const [recordCall, pemCall] = putCallsOf(dependencies);
 
       expect(pemCall!.key).toBe(`failed/${sha256}.pem`);
       expect(recordCall!.key).toBe(`failed/${sha256}.json`);
@@ -195,14 +195,14 @@ describe('Handler - Validation failures', () => {
     });
 
     it('keys the outputs by the SHA-256 of the decoded body', () => {
-      const [pemCall, recordCall] = putCallsOf(dependencies);
+      const [recordCall, pemCall] = putCallsOf(dependencies);
 
       expect(pemCall!.key).toBe(`failed/${sha256}.pem`);
       expect(recordCall!.key).toBe(`failed/${sha256}.json`);
     });
 
     it('writes a fail record with one FORMAT.PKCS10 violation', () => {
-      expect(JSON.parse(putCallsOf(dependencies)[1]!.body as string)).toEqual({
+      expect(JSON.parse(putCallsOf(dependencies)[0]!.body as string)).toEqual({
         status: 'fail',
         sha256,
         subjectDn: null,

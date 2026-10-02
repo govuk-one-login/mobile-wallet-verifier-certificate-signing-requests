@@ -51,10 +51,10 @@ describe('Handler - Duplicate uploads and multiple records', () => {
       expect(calls).toHaveLength(4);
       expect(calls.slice(2)).toStrictEqual(calls.slice(0, 2));
       expect(calls.map(({ key }) => key)).toStrictEqual([
-        `validated/${passingSha256}.pem`,
         `validated/${passingSha256}.json`,
         `validated/${passingSha256}.pem`,
         `validated/${passingSha256}.json`,
+        `validated/${passingSha256}.pem`,
       ]);
     });
   });
@@ -117,10 +117,10 @@ describe('Handler - Duplicate uploads and multiple records', () => {
 
       it('writes each outcome in record order', () => {
         expect(putCallsOf(dependencies).map(({ key }) => key)).toStrictEqual([
-          `validated/${passingSha256}.pem`,
           `validated/${passingSha256}.json`,
-          `failed/${failingSha256}.pem`,
+          `validated/${passingSha256}.pem`,
           `failed/${failingSha256}.json`,
+          `failed/${failingSha256}.pem`,
         ]);
       });
 

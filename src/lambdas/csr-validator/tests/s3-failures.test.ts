@@ -73,7 +73,10 @@ describe('Handler - S3 failures', () => {
 
   describe('Given the .pem put fails', () => {
     beforeEach(async () => {
-      dependencies.putS3Object = vi.fn().mockResolvedValue(emptyFailure());
+      dependencies.putS3Object = vi
+        .fn()
+        .mockResolvedValueOnce(emptySuccess())
+        .mockResolvedValueOnce(emptyFailure());
       await invoke();
     });
 
@@ -84,8 +87,9 @@ describe('Handler - S3 failures', () => {
       );
     });
 
-    it('does not attempt the .json put', () => {
+    it('attempted the .json put before the .pem put', () => {
       expect(putCallsOf(dependencies).map(({ key }) => key)).toStrictEqual([
+        `validated/${sha256}.json`,
         `validated/${sha256}.pem`,
       ]);
     });
@@ -99,10 +103,7 @@ describe('Handler - S3 failures', () => {
 
   describe('Given the .json put fails', () => {
     beforeEach(async () => {
-      dependencies.putS3Object = vi
-        .fn()
-        .mockResolvedValueOnce(emptySuccess())
-        .mockResolvedValueOnce(emptyFailure());
+      dependencies.putS3Object = vi.fn().mockResolvedValue(emptyFailure());
       await invoke();
     });
 
@@ -113,9 +114,8 @@ describe('Handler - S3 failures', () => {
       );
     });
 
-    it('attempted the .pem put before the .json put', () => {
+    it('does not attempt the .pem put', () => {
       expect(putCallsOf(dependencies).map(({ key }) => key)).toStrictEqual([
-        `validated/${sha256}.pem`,
         `validated/${sha256}.json`,
       ]);
     });

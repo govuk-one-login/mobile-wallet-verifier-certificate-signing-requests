@@ -85,18 +85,18 @@ describe('Handler - Non-PEM uploads', () => {
       });
     });
 
-    it('writes the uploaded bytes unchanged to failed/incoming/My File.pem first', () => {
-      expect(dependencies.putS3Object).toHaveBeenNthCalledWith(1, {
+    it('writes the uploaded bytes unchanged to failed/incoming/My File.pem second', () => {
+      expect(dependencies.putS3Object).toHaveBeenNthCalledWith(2, {
         bucket: VALIDATED_BUCKET,
         key: 'failed/incoming/My File.pem',
         body: uploadedBytes,
         contentType: 'application/x-pem-file',
       });
-      expect(putCallsOf(dependencies)[0]!.body).toBe(uploadedBytes);
+      expect(putCallsOf(dependencies)[1]!.body).toBe(uploadedBytes);
     });
 
-    it('then writes a filename-keyed fail record with one FORMAT.PEM violation', () => {
-      const [, recordCall] = putCallsOf(dependencies);
+    it('writes a path-keyed fail record with one FORMAT.PEM violation first', () => {
+      const [recordCall] = putCallsOf(dependencies);
 
       expect(putCallsOf(dependencies)).toHaveLength(2);
       expect(recordCall!.key).toBe('failed/incoming/My File.json');
@@ -162,8 +162,8 @@ describe('Handler - Non-PEM uploads', () => {
 
     it('keys the outputs by the full source path, not the file name alone', () => {
       expect(putCallsOf(dependencies).map(({ key }) => key)).toStrictEqual([
-        'failed/incoming/org-a/request.pem',
         'failed/incoming/org-a/request.json',
+        'failed/incoming/org-a/request.pem',
       ]);
     });
   });
@@ -180,8 +180,8 @@ describe('Handler - Non-PEM uploads', () => {
         expect.objectContaining({ key: 'incoming/café + co.v2.pem' }),
       );
       expect(putCallsOf(dependencies).map(({ key }) => key)).toStrictEqual([
-        'failed/incoming/café + co.v2.pem',
         'failed/incoming/café + co.v2.json',
+        'failed/incoming/café + co.v2.pem',
       ]);
     });
   });

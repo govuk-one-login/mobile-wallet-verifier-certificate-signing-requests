@@ -17,13 +17,9 @@ export const getRequiredEnvironmentVariables = <T extends string>(
   env: NodeJS.ProcessEnv,
   requiredEnvironmentVariables: readonly T[],
 ): Result<Config<T>, MissingEnvVarError> => {
-  const config: Partial<Config<T>> = requiredEnvironmentVariables.reduce(
-    (partialConfig: Partial<Config<T>>, key) => {
-      partialConfig[key] = env[key];
-      return partialConfig;
-    },
-    {},
-  );
+  const config = Object.fromEntries(
+    requiredEnvironmentVariables.map((key) => [key, env[key]]),
+  ) as Partial<Config<T>>;
 
   const missingEnvironmentVariables = requiredEnvironmentVariables.filter(
     (key) => !config[key],

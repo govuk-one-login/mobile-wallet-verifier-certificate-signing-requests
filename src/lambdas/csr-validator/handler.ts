@@ -65,7 +65,9 @@ const processRecord = async (
 ): Promise<void> => {
   const source = getSource(record);
   const csrBytes = await fetchCsr(dependencies, source);
-  const report = await validateCsrText(decodeUtf8(csrBytes));
+  const report = await validateCsrText(
+    new TextDecoder('utf-8').decode(csrBytes),
+  );
   const outcome = buildOutcome(source, report);
 
   const writeResult = await writeOutcome(dependencies.putS3Object, {
@@ -109,8 +111,5 @@ const fetchCsr = async (
   }
   return getResult.value;
 };
-
-const decodeUtf8 = (bytes: Uint8Array): string =>
-  new TextDecoder('utf-8').decode(bytes);
 
 export const handler = handlerConstructor.bind(null, runtimeDependencies);

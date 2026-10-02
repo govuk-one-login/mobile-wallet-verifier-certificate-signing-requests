@@ -18,12 +18,9 @@ export type ResultRecord = {
   violations: Violation[];
 };
 
-export type OutcomeLogFields = {
+export type OutcomeLogFields = Omit<ResultRecord, 'status'> & {
   outcome: ValidationStatus;
-  sha256: string | null;
   resultKey: string;
-  subjectDn: string | null;
-  violations: Violation[];
   checks: RuleResult[];
 };
 
@@ -81,11 +78,12 @@ const buildLogFields = (
   resultRecord: ResultRecord,
   resultKey: string,
   report: ValidationReport,
-): OutcomeLogFields => ({
-  outcome: resultRecord.status,
-  sha256: resultRecord.sha256,
-  resultKey,
-  subjectDn: resultRecord.subjectDn,
-  violations: resultRecord.violations,
-  checks: report.checks,
-});
+): OutcomeLogFields => {
+  const { status, ...recordFields } = resultRecord;
+  return {
+    ...recordFields,
+    outcome: status,
+    resultKey,
+    checks: report.checks,
+  };
+};

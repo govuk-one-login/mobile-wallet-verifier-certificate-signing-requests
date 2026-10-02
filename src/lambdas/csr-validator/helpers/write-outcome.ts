@@ -21,16 +21,6 @@ export const writeOutcome = async (
 ): Promise<Result<void, string>> => {
   const { bucket, outcome, csrBytes } = input;
 
-  const pemResult = await putS3Object({
-    bucket,
-    key: outcome.pemKey,
-    body: csrBytes,
-    contentType: PEM_CONTENT_TYPE,
-  });
-  if (pemResult.isError) {
-    return errorResult(outcome.pemKey);
-  }
-
   const recordResult = await putS3Object({
     bucket,
     key: outcome.resultKey,
@@ -39,6 +29,16 @@ export const writeOutcome = async (
   });
   if (recordResult.isError) {
     return errorResult(outcome.resultKey);
+  }
+
+  const pemResult = await putS3Object({
+    bucket,
+    key: outcome.pemKey,
+    body: csrBytes,
+    contentType: PEM_CONTENT_TYPE,
+  });
+  if (pemResult.isError) {
+    return errorResult(outcome.pemKey);
   }
 
   return emptySuccess();

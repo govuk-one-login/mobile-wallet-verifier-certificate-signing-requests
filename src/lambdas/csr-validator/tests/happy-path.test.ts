@@ -58,18 +58,18 @@ describe('Handler - Happy path', () => {
       });
     });
 
-    it('writes the uploaded bytes to validated/<sha256>.pem first', () => {
-      expect(dependencies.putS3Object).toHaveBeenNthCalledWith(1, {
+    it('writes the uploaded bytes to validated/<sha256>.pem second', () => {
+      expect(dependencies.putS3Object).toHaveBeenNthCalledWith(2, {
         bucket: VALIDATED_BUCKET,
         key: `validated/${sha256}.pem`,
         body: csrBytes,
         contentType: 'application/x-pem-file',
       });
-      expect(putCallsOf(dependencies)[0]!.body).toBe(csrBytes);
+      expect(putCallsOf(dependencies)[1]!.body).toBe(csrBytes);
     });
 
-    it('then writes the pass result record to validated/<sha256>.json', () => {
-      const [, recordCall] = putCallsOf(dependencies);
+    it('writes the pass result record to validated/<sha256>.json first', () => {
+      const [recordCall] = putCallsOf(dependencies);
 
       expect(putCallsOf(dependencies)).toHaveLength(2);
       expect(recordCall).toEqual({
@@ -137,7 +137,7 @@ describe('Handler - Happy path', () => {
     });
 
     it('stores the fetched bytes byte-for-byte under the DER fingerprint', () => {
-      const [pemCall] = putCallsOf(dependencies);
+      const [, pemCall] = putCallsOf(dependencies);
 
       expect(pemCall!.key).toBe(`validated/${sha256}.pem`);
       expect(pemCall!.body).toBe(crlfBytes);
@@ -165,7 +165,7 @@ describe('Handler - Happy path', () => {
     });
 
     it('stores the fetched bytes byte-for-byte under the DER fingerprint', () => {
-      const [pemCall] = putCallsOf(dependencies);
+      const [, pemCall] = putCallsOf(dependencies);
 
       expect(pemCall!.key).toBe(`validated/${sha256}.pem`);
       expect(pemCall!.body).toBe(bomBytes);
