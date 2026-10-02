@@ -37,7 +37,7 @@ export const handlerConstructor = async (
     try {
       await processRecord(dependencies, configResult.value, record);
     } catch (error: unknown) {
-      const failure = error as Error;
+      const failure = error instanceof Error ? error : new Error(String(error));
       failures.push(failure);
       logger.error(LogMessage.CSR_VALIDATOR_RECORD_FAILED, {
         errorMessage: failure.message,
@@ -46,12 +46,14 @@ export const handlerConstructor = async (
   }
 
   if (failures.length === 1) {
-    throw failures[0]!;
+    const [onlyFailure] = failures;
+    throw new Error(onlyFailure.message, { cause: onlyFailure });
   }
   if (failures.length > 1) {
     throw new Error(
       `Failed to process ${failures.length} of ${event.Records.length} records: ` +
         failures.map((failure) => failure.message).join('; '),
+      { cause: failures },
     );
   }
 };
