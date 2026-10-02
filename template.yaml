@@ -32,6 +32,12 @@ Parameters:
     Type: String
     Default: vpc
 
+  IntCaBackendStackName:
+    Description: |
+      The stack name of the Int CA backend where certificates issued bucket is deployed
+    Type: String
+    Default: dvs-ca
+
   LambdaDeploymentPreference:
     Description: |
       Specifies the configuration to enable gradual Lambda deployments. Value can be 'AllAtOnce', a default deployment config, or name of custom DeploymentConfig.
@@ -249,7 +255,88 @@ Resources:
         - Key: Purpose
           Value: Store validated CSRs
 
+  L3EnableDisableOperatorRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-L3EnableDisableOperatorRole"
+      PermissionsBoundary: !If
+        - UsePermissionsBoundary
+        - !Ref PermissionsBoundary
+        - !Ref AWS::NoValue
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action: sts:AssumeRole
+            Condition:
+              ArnLike:
+                aws:PrincipalARN:
+                  - !Sub "arn:aws:iam::${AWS::AccountId}:role/aws-reserved/sso.amazonaws.com/*/AWSReservedSSO_AdministratorAccessPermission*"
+                  - !Sub "arn:aws:iam::${AWS::AccountId}:role/aws-reserved/sso.amazonaws.com/*/AWSReservedSSO_ApprovedMobWalletCAEnableDisable*"
+      Policies:
+        - PolicyName: L3EnableDisableOperatorS3AccessReceivedBucket
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:ListBucket
+                Resource:
+                  - !Sub "arn:aws:s3:::${CsrReceivedBucket}/*"
+                  - !Sub "arn:aws:s3:::${CsrReceivedBucket}"
+        - PolicyName: L3EnableDisableOperatorKMSAccessReceivedBucket
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - kms:Encrypt
+                  - kms:GenerateDataKey
+                Resource:
+                  - !GetAtt CsrReceivedBucketKmsKey.Arn
+        - PolicyName: L3EnableDisableOperatorAccessValidatedBucket
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - kms:Decrypt
+                Resource:
+                  - !GetAtt CsrValidatedBucketKmsKey.Arn
 
+  L3IssueRevokeOperatorRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-L3IssueRevokeOperatorRole"
+      PermissionsBoundary: !If
+        - UsePermissionsBoundary
+        - !Ref PermissionsBoundary
+        - !Ref AWS::NoValue
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action: sts:AssumeRole
+            Condition:
+              ArnLike:
+                aws:PrincipalARN:
+                  - !Sub "arn:aws:iam::${AWS::AccountId}:role/aws-reserved/sso.amazonaws.com/*/AWSReservedSSO_AdministratorAccessPermission*"
+                  - !Sub "arn:aws:iam::${AWS::AccountId}:role/aws-reserved/sso.amazonaws.com/*/AWSReservedSSO_ApprovedMobWalletCAIssueRevoke*"
+      Policies:
+        - PolicyName: L3IssueRevokeOperatorAccessValidatedBucket
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - kms:Decrypt
+                Resource:
+                  - !GetAtt CsrValidatedBucketKmsKey.Arn
 
   Linear20PercentEvery1Minute:
     Type: AWS::CodeDeploy::DeploymentConfig
@@ -340,13 +427,10 @@ Resources:
 
 
 Outputs:
-  CsrReceivedBucketKmsKeyArn:
-    Description: ARN of the KMS key used for CsrReceivedBucket encryption
-    Value: !GetAtt CsrReceivedBucketKmsKey.Arn
-
   CsrReceivedBucketName:
     Description: Name of the S3 bucket to store CSRs received from external DVS organisations
     Value: !Ref CsrReceivedBucket
+
   CsrValidatedBucketName:
     Description: Name of the S3 bucket which has validated CSRs
     Value: !Ref CsrValidatedBucket
