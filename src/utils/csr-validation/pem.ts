@@ -3,7 +3,7 @@ import { errorResult, Result, successResult } from '../result/result.ts';
 const PEM_RE =
   /^-----BEGIN CERTIFICATE REQUEST-----\r?\n((?:[A-Za-z0-9+/=]+\r?\n)+)-----END CERTIFICATE REQUEST-----\r?\n?$/;
 
-const LEADING_OR_TRAILING_ASCII_WHITESPACE = /^[ \t\r\n]+|[ \t\r\n]+$/g;
+const ASCII_WHITESPACE = new Set([' ', '\t', '\r', '\n']);
 
 export function decodePem(input: string): Result<Uint8Array, string> {
   const trimmed = trimAsciiWhitespace(input) + '\n';
@@ -17,7 +17,11 @@ export function decodePem(input: string): Result<Uint8Array, string> {
 }
 
 function trimAsciiWhitespace(input: string): string {
-  return input.replace(LEADING_OR_TRAILING_ASCII_WHITESPACE, '');
+  let start = 0;
+  let end = input.length;
+  while (start < end && ASCII_WHITESPACE.has(input[start]!)) start++;
+  while (end > start && ASCII_WHITESPACE.has(input[end - 1]!)) end--;
+  return input.slice(start, end);
 }
 
 function decodeBase64Body(body: string): Result<Uint8Array, string> {
