@@ -316,7 +316,7 @@ Resources:
         Target: es2022
         Sourcemap: false
         EntryPoints:
-          - src/csr-validator/handler.ts
+          - src/lambdas/csr-validator/handler.ts
       checkov:
         skip:
           - id: CKV_AWS_115
@@ -325,11 +325,15 @@ Resources:
       FunctionName: !Sub "${AWS::StackName}-csr-validator"
       CodeUri: ./
       Handler: handler.handler
+      Timeout: 30
+      MemorySize: 512
       CodeSigningConfigArn: !If
         - UseCodeSigning
         - !Ref CodeSigningConfigArn
         - !Ref AWS::NoValue
       Role: !GetAtt CsrValidatorFunctionRole.Arn
+      LoggingConfig:
+        LogGroup: !Ref CsrValidatorFunctionLogGroup
       VpcConfig:
         SecurityGroupIds:
           - Fn::ImportValue: !Sub ${VpcStackName}-AWSServicesEndpointSecurityGroupId

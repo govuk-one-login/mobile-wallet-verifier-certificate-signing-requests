@@ -8,6 +8,7 @@ import {
   testRequiredSections,
   testEnvironmentParameter,
   testRequiredParameters,
+  ENVIRONMENT_VALUES,
 } from './shared-helpers/cfn-test-utils.js';
 
 const templateFeature = loadFeature(
@@ -18,6 +19,9 @@ const receivedBucketFeature = loadFeature(
 );
 const validatedBucketFeature = loadFeature(
   join(__dirname, '../features/validated-bucket.feature'),
+);
+const validatorFunctionFeature = loadFeature(
+  join(__dirname, '../features/validator-function.feature'),
 );
 
 let template: CloudFormationTemplate;
@@ -215,3 +219,45 @@ const defineBucketFeature = (feature: ReturnType<typeof loadFeature>) => {
 
 defineBucketFeature(receivedBucketFeature);
 defineBucketFeature(validatedBucketFeature);
+
+defineFeature(validatorFunctionFeature, (test) => {
+  test('Function logs to its managed log group', ({ given, then }) => {
+    loadTemplate(given);
+
+    then(
+      /^the "([^"]+)" function should log to "([^"]+)"$/,
+      (functionName: string, logGroupName: string) => {
+        const fn = template.Resources[functionName] as Record<string, unknown>;
+        const loggingConfig = (fn.Properties as Record<string, unknown>)
+          .LoggingConfig as Record<string, unknown>;
+        expect(loggingConfig.LogGroup).toEqual({ Ref: logGroupName });
+      },
+    );
+  });
+
+  test('Every function is code signed', ({ given, then }) => {
+    loadTemplate(given);
+
+    then(
+      /^every "([^"]+)" should set CodeSigningConfigArn under the "([^"]+)" condition$/,
+      (resourceType: string, conditionName: string) => {
+        const functions = Object.entries(template.Resources).filter(
+          ([, resource]) =>
+            (resource as Record<string, unknown>).Type === resourceType,
+        );
+        expect(functions.length).toBeGreaterThan(0);
+        for (const [name, resource] of functions) {
+          const properties = (resource as Record<string, unknown>)
+            .Properties as Record<string, unknown>;
+          expect(properties.CodeSigningConfigArn, name).toEqual({
+            'Fn::If': [
+              conditionName,
+              { Ref: 'CodeSigningConfigArn' },
+              { Ref: 'AWS::NoValue' },
+            ],
+          });
+        }
+      },
+    );
+  });
+});
