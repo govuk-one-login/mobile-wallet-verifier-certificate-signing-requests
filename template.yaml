@@ -283,10 +283,8 @@ Resources:
               - Effect: Allow
                 Action:
                   - s3:PutObject
-                  - s3:ListBucket
                 Resource:
                   - !Sub "arn:aws:s3:::${CsrReceivedBucket}/*"
-                  - !Sub "arn:aws:s3:::${CsrReceivedBucket}"
         - PolicyName: L3EnableDisableOperatorKMSAccessReceivedBucket
           PolicyDocument:
             Version: "2012-10-17"
