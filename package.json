@@ -6,19 +6,25 @@
   "scripts": {
     "postinstall": "husky || true",
     "build": "mkdir -p dist && cp -f open-api-spec.yaml dist/ && node build.mjs",
-    "test": "./node_modules/.bin/vitest run",
+    "test": "npm run test:infra",
+    "test:infra": "./node_modules/.bin/vitest run --project infra",
+    "test:system": "./node_modules/.bin/vitest run --project system",
+    "test:all": "./node_modules/.bin/vitest run",
     "lint": "./node_modules/.bin/eslint .",
     "format": "./node_modules/.bin/prettier --write '**/*.{json,md,ts}'",
     "format:check": "./node_modules/.bin/prettier --check '**/*.{json,md,ts}'"
   },
   "license": "MIT",
   "dependencies": {
-    "esbuild": "0.28.2"
+    "esbuild": "0.28.2",
+    "jiti": "2.7.0"
   },
   "engines": {
     "node": ">=22.0.0 <23.0.0"
   },
   "devDependencies": {
+    "@aws-sdk/client-s3": "3.1142.0",
+    "@aws-sdk/client-sts": "3.1142.0",
     "@cucumber/cucumber": "13.2.1",
     "@eslint/js": "9.39.2",
     "@types/node": "22.20.1",
