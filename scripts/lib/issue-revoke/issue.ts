@@ -71,9 +71,7 @@ function extractSubjectFields(csrPem: string): SubjectFields {
   if (!org?.length)
     throw new Error('CSR is missing Organization (O) in Subject DN');
   if (!ou?.length)
-    throw new Error(
-      'CSR is missing OrganizationalUnit (OU) in Subject DN',
-    );
+    throw new Error('CSR is missing OrganizationalUnit (OU) in Subject DN');
   if (!cn?.length)
     throw new Error('CSR is missing CommonName (CN) in Subject DN');
   if (!serial?.length)
@@ -158,8 +156,7 @@ export async function issueCertificate(
     }),
   );
 
-  if (!CertificateArn)
-    throw new Error('IssueCertificate returned no ARN');
+  if (!CertificateArn) throw new Error('IssueCertificate returned no ARN');
 
   // 4. Wait for issuance
   await waitUntilCertificateIssued(
@@ -175,10 +172,8 @@ export async function issueCertificate(
     }),
   );
 
-  if (!Certificate)
-    throw new Error('GetCertificate returned empty body');
-  if (!CertificateChain)
-    throw new Error('GetCertificate returned no chain');
+  if (!Certificate) throw new Error('GetCertificate returned empty body');
+  if (!CertificateChain) throw new Error('GetCertificate returned no chain');
 
   // 6. Extract serial number
   const issuedCert = new x509.X509Certificate(Certificate);
