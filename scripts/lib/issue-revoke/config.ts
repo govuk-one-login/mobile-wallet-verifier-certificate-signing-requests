@@ -9,7 +9,7 @@ import {
   STACK_OUTPUT_CSR_VALIDATED_BUCKET,
 } from './constants.js';
 
-// ── State ───────────────────────────────────────────────────────────
+// State
 
 let caStackName: string;
 let csrStackName: string;
@@ -22,52 +22,41 @@ export function setCsrStackName(name: string): void {
   csrStackName = name;
 }
 
-// ── Stack output resolution ─────────────────────────────────────────
+// Stack output resolution
 
-async function getStackOutput(
-  stackName: string,
-  key: string,
-): Promise<string> {
+async function getStackOutput(stackName: string, key: string): Promise<string> {
   const cfn = new CloudFormationClient({ region: AWS_REGION });
   const { Stacks } = await cfn.send(
     new DescribeStacksCommand({ StackName: stackName }),
   );
   const output = Stacks?.[0]?.Outputs?.find((o) => o.OutputKey === key);
   if (!output?.OutputValue) {
-    throw new Error(
-      `Output "${key}" not found in stack "${stackName}".`,
-    );
+    throw new Error(`Output "${key}" not found in stack "${stackName}".`);
   }
   return output.OutputValue;
 }
 
-// ── dvs-ca stack outputs ────────────────────────────────────────────
+// dvs-ca stack outputs
 
 export async function getCaArn(): Promise<string> {
   if (!caStackName) {
-    throw new Error(
-      'CA stack name not set. Call setCaStackName() first.',
-    );
+    throw new Error('CA stack name not set. Call setCaStackName() first.');
   }
   return getStackOutput(caStackName, STACK_OUTPUT_CA_ARN);
 }
 
 export async function getIssuedCertsBucket(): Promise<string> {
   if (!caStackName) {
-    throw new Error(
-      'CA stack name not set. Call setCaStackName() first.',
-    );
+    throw new Error('CA stack name not set. Call setCaStackName() first.');
   }
   return getStackOutput(caStackName, STACK_OUTPUT_ISSUED_CERTS_BUCKET);
 }
 
-// ── CSR stack outputs ───────────────────────────────────────────────
+// CSR stack outputs
 
 export async function getCsrValidatedBucket(): Promise<string> {
   if (!csrStackName) {
-    throw new Error(
-      'CSR stack name not set. Call setCsrStackName() first.',
-    );
+    throw new Error('CSR stack name not set. Call setCsrStackName() first.');
   }
   return getStackOutput(csrStackName, STACK_OUTPUT_CSR_VALIDATED_BUCKET);
 }

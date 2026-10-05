@@ -37,5 +37,4 @@ export const ALLOWED_ROLES = [
 
 // Input validation
 export const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-export const COLON_HEX_SERIAL_RE =
-  /^[0-9a-fA-F]{2}(:[0-9a-fA-F]{2})+$/;
+export const COLON_HEX_SERIAL_RE = /^[0-9a-fA-F]{2}(:[0-9a-fA-F]{2})+$/;

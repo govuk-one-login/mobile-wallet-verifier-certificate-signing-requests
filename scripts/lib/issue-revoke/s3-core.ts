@@ -18,13 +18,13 @@ import {
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { AWS_REGION, PRESIGN_EXPIRES_IN } from './constants.js';
 
-// ── Client factory ──────────────────────────────────────────────────
+// Client factory
 
 export function createS3Client(): S3Client {
   return new S3Client({ region: AWS_REGION });
 }
 
-// ── Download (in-memory) ────────────────────────────────────────────
+// Download (in-memory)
 
 /**
  * Downloads an S3 object and returns its content as a UTF-8 string.
@@ -41,9 +41,7 @@ export async function download(
     );
     const text = await Body?.transformToString('utf-8');
     if (!text) {
-      throw new Error(
-        `Downloaded empty body from s3://${bucket}/${key}.`,
-      );
+      throw new Error(`Downloaded empty body from s3://${bucket}/${key}.`);
     }
     return text;
   } catch (err) {
@@ -57,7 +55,7 @@ export async function download(
   }
 }
 
-// ── Upload (in-memory) ──────────────────────────────────────────────
+// Upload (in-memory)
 
 /**
  * Uploads a string body to S3 as a PEM file.
@@ -79,7 +77,7 @@ export async function upload(
   );
 }
 
-// ── Verify ──────────────────────────────────────────────────────────
+// Verify
 
 /**
  * Confirms an object exists in the bucket after upload.
@@ -98,7 +96,7 @@ export async function verifyPresent(
   }
 }
 
-// ── List CSR files ──────────────────────────────────────────────────
+// List CSR files
 
 /**
  * Lists all `.pem` object keys in the csr-validated bucket.
@@ -110,10 +108,7 @@ export async function listCsrFiles(
 ): Promise<string[]> {
   const keys: string[] = [];
 
-  const paginator = paginateListObjectsV2(
-    { client: s3 },
-    { Bucket: bucket },
-  );
+  const paginator = paginateListObjectsV2({ client: s3 }, { Bucket: bucket });
 
   for await (const page of paginator) {
     for (const obj of page.Contents ?? []) {
@@ -126,7 +121,7 @@ export async function listCsrFiles(
   return keys.sort();
 }
 
-// ── Pre-signed URLs ─────────────────────────────────────────────────
+// Pre-signed URLs
 
 /**
  * Generates a pre-signed GET URL valid for {@link PRESIGN_EXPIRES_IN}
@@ -137,9 +132,7 @@ export async function presignGetUrl(
   bucket: string,
   key: string,
 ): Promise<string> {
-  return getSignedUrl(
-    s3,
-    new GetObjectCommand({ Bucket: bucket, Key: key }),
-    { expiresIn: PRESIGN_EXPIRES_IN },
-  );
+  return getSignedUrl(s3, new GetObjectCommand({ Bucket: bucket, Key: key }), {
+    expiresIn: PRESIGN_EXPIRES_IN,
+  });
 }
