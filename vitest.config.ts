@@ -29,9 +29,28 @@ export default defineConfig({
           setupFiles: ['vitest.setup.ts'],
         },
       },
+      {
+        test: {
+          name: 'unit',
+          env: sharedEnv,
+          include: ['src/**/*.{test,spec}.?(c|m)[jt]s?(x)'],
+          exclude: ['node_modules/**'],
+          setupFiles: ['vitest.setup.ts'],
+        },
+      },
+      {
+        test: {
+          name: 'script-unit',
+          clearMocks: true,
+          include: ['scripts/unit/**/*.test.ts'],
+          exclude: ['node_modules/**'],
+          setupFiles: ['./scripts/unit/test-setup.ts'],
+        },
+      },
     ],
     coverage: {
       provider: 'v8',
+      include: ['src/**/*.ts', 'scripts/lib/**/*.ts'],
       reporter: ['text', 'json', 'html', 'lcov'],
       exclude: [
         'node_modules/**',
@@ -39,6 +58,7 @@ export default defineConfig({
         'vitest.config.ts',
         'eslint.config.ts',
         'tests/**',
+        'scripts/unit/**',
       ],
     },
   },

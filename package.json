@@ -24,9 +24,9 @@
     "@aws-sdk/client-s3": "3.1146.0",
     "@aws-sdk/client-sts": "3.1146.0",
     "@aws-sdk/s3-request-presigner": "3.1146.0",
-    "@peculiar/asn1-x509": "2.10.0",
     "@peculiar/asn1-csr": "2.10.0",
     "@peculiar/asn1-schema": "2.10.0",
+    "@peculiar/asn1-x509": "2.10.0",
     "@peculiar/x509": "2.1.0",
     "esbuild": "0.28.2"
   },
@@ -39,14 +39,15 @@
     "@cucumber/cucumber": "13.2.1",
     "@eslint/js": "9.39.2",
     "@types/node": "22.20.1",
+    "aws-sdk-client-mock": "4.1.0",
     "eslint": "10.9.1",
     "husky": "9.1.7",
     "jest-cucumber": "4.5.0",
     "js-yaml": "5.4.2",
     "prettier": "3.9.6",
     "reflect-metadata": "0.2.2",
-    "typescript": "6.0.3",
     "tsx": "4.23.15",
+    "typescript": "6.0.3",
     "typescript-eslint": "8.68.0",
     "vitest": "4.1.11"
   }
