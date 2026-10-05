@@ -22,6 +22,9 @@ const validatedBucketFeature = loadFeature(
 const validatorFunctionFeature = loadFeature(
   join(__dirname, '../features/validator-function.feature'),
 );
+const l3OperatorRolesFeature = loadFeature(
+  join(__dirname, '../features/l3-operator-roles.feature'),
+);
 
 let template: CloudFormationTemplate;
 
@@ -389,6 +392,149 @@ defineFeature(validatorFunctionFeature, (test) => {
         expect(sourceArn['Fn::Sub']).toBe(
           `arn:aws:s3:::\${AWS::AccountId}-\${AWS::StackName}-${bucketSuffix}`,
         );
+      },
+    );
+  });
+});
+
+defineFeature(l3OperatorRolesFeature, (test) => {
+  const roleOf = (roleName: string): Record<string, unknown> => {
+    const role = template.Resources[roleName] as Record<string, unknown>;
+    expect(role, `role ${roleName} not found`).toBeDefined();
+    return role.Properties as Record<string, unknown>;
+  };
+
+  const policiesOf = (roleName: string): Record<string, unknown>[] =>
+    roleOf(roleName).Policies as Record<string, unknown>[];
+
+  const expectRoleExists = (roleName: string) => {
+    const role = template.Resources[roleName] as Record<string, unknown>;
+    expect(role, `role ${roleName} not found`).toBeDefined();
+    expect(role.Type).toBe('AWS::IAM::Role');
+  };
+
+  const expectPermissionsBoundary = (roleName: string) => {
+    const props = roleOf(roleName);
+    expect(props.PermissionsBoundary).toEqual({
+      'Fn::If': [
+        'UsePermissionsBoundary',
+        { Ref: 'PermissionsBoundary' },
+        { Ref: 'AWS::NoValue' },
+      ],
+    });
+  };
+
+  const expectAssumableBySso = (roleName: string, permissionSet: string) => {
+    const props = roleOf(roleName);
+    const doc = props.AssumeRolePolicyDocument as Record<string, unknown>;
+    const statements = doc.Statement as Record<string, unknown>[];
+    const condition = statements[0]!.Condition as Record<string, unknown>;
+    const arnLike = condition.ArnLike as Record<string, unknown>;
+    const principals = arnLike['aws:PrincipalARN'] as Record<string, string>[];
+    const matched = principals.some((p) =>
+      (p['Fn::Sub'] ?? '').includes(permissionSet),
+    );
+    expect(matched, `${roleName} is not assumable by ${permissionSet}`).toBe(
+      true,
+    );
+  };
+
+  const expectPolicyNamePrefix = (roleName: string, prefix: string) => {
+    const policies = policiesOf(roleName);
+    expect(policies.length).toBeGreaterThan(0);
+    for (const policy of policies) {
+      expect(policy.PolicyName as string).toMatch(new RegExp(`^${prefix}`));
+    }
+  };
+
+  test('EnableDisable operator role is defined with the expected trust and permissions', ({
+    given,
+    then,
+    and,
+  }) => {
+    loadTemplate(given);
+    then(/^the "([^"]+)" role should exist as an IAM role$/, expectRoleExists);
+    and(
+      /^the "([^"]+)" role should carry the permissions boundary$/,
+      expectPermissionsBoundary,
+    );
+    and(
+      /^the "([^"]+)" role should be assumable only by the "([^"]+)" permission set$/,
+      expectAssumableBySso,
+    );
+    and(
+      /^the "([^"]+)" role should name every inline policy with the "([^"]+)" prefix$/,
+      expectPolicyNamePrefix,
+    );
+  });
+
+  test('IssueRevoke operator role is defined with the expected trust and permissions', ({
+    given,
+    then,
+    and,
+  }) => {
+    loadTemplate(given);
+    then(/^the "([^"]+)" role should exist as an IAM role$/, expectRoleExists);
+    and(
+      /^the "([^"]+)" role should carry the permissions boundary$/,
+      expectPermissionsBoundary,
+    );
+    and(
+      /^the "([^"]+)" role should be assumable only by the "([^"]+)" permission set$/,
+      expectAssumableBySso,
+    );
+    and(
+      /^the "([^"]+)" role should name every inline policy with the "([^"]+)" prefix$/,
+      expectPolicyNamePrefix,
+    );
+  });
+
+  test('IssueRevoke operator can write issued certificates to the Int CA backend bucket', ({
+    given,
+    then,
+  }) => {
+    loadTemplate(given);
+    then(
+      /^the "([^"]+)" role should allow "([^"]+)" on the imported "([^"]+)" under the "([^"]+)" prefix$/,
+      (
+        roleName: string,
+        action: string,
+        importSuffix: string,
+        prefix: string,
+      ) => {
+        const policies = policiesOf(roleName);
+        const statements = policies.flatMap((policy) => {
+          const document = policy.PolicyDocument as Record<string, unknown>;
+          return document.Statement as Record<string, unknown>[];
+        });
+        const match = statements.find((statement) => {
+          const act = statement.Action;
+          const hasAction = Array.isArray(act)
+            ? act.includes(action)
+            : act === action;
+          if (!hasAction) return false;
+          const resource = statement.Resource as Record<string, unknown>;
+          const sub = resource['Fn::Sub'] as unknown[] | undefined;
+          return (
+            Array.isArray(sub) &&
+            typeof sub[0] === 'string' &&
+            (sub[0] as string).includes(`/${prefix}`)
+          );
+        });
+        expect(
+          match,
+          `no ${action} statement scoped to ${prefix} found on ${roleName}`,
+        ).toBeDefined();
+        const resource = (match!.Resource as Record<string, unknown>)[
+          'Fn::Sub'
+        ] as unknown[];
+        const vars = resource[1] as Record<string, unknown>;
+        const bucketName = vars.BucketName as Record<string, unknown>;
+        const importValue = bucketName['Fn::ImportValue'] as Record<
+          string,
+          unknown
+        >;
+        expect(JSON.stringify(importValue)).toContain(importSuffix);
       },
     );
   });

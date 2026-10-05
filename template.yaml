@@ -351,7 +351,7 @@ Resources:
                   - kms:Decrypt
                 Resource:
                   - !GetAtt CsrValidatedBucketKmsKey.Arn
-        - PolicyName: L3EnableDisableOperatorS3ListReceivedAndValidatedBucket
+        - PolicyName: L3IssueRevokeOperatorS3ListReceivedAndValidatedBucket
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
@@ -361,7 +361,7 @@ Resources:
                 Resource:
                   - !Sub "arn:aws:s3:::${CsrReceivedBucket}"
                   - !Sub "arn:aws:s3:::${CsrValidatedBucket}"
-        - PolicyName: L3EnableDisableOperatorS3PutIntoCertsBucket
+        - PolicyName: L3IssueRevokeOperatorS3PutIntoCertsBucket
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
@@ -372,7 +372,7 @@ Resources:
                   - "arn:aws:s3:::${BucketName}/issued/*"
                   - BucketName: !ImportValue
                       Fn::Sub: "${IntCaBackendStackName}-IssuedCertsBucketName"
-        - PolicyName: L3EnableDisableOperatorS3ListCertsBucketCertPrefix
+        - PolicyName: L3IssueRevokeOperatorS3ListCertsBucketCertPrefix
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
