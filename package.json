@@ -17,7 +17,12 @@
   "license": "MIT",
   "dependencies": {
     "esbuild": "0.28.2",
-    "jiti": "2.7.0"
+    "jiti": "2.7.0",
+    "@aws-sdk/client-cloudformation": "3.1146.0",
+    "@aws-sdk/client-s3": "3.1146.0",
+    "@aws-sdk/client-sts": "3.1146.0",
+    "@aws-sdk/s3-request-presigner": "3.1146.0",
+    "esbuild": "0.28.2"
   },
   "engines": {
     "node": ">=22.0.0 <23.0.0"
