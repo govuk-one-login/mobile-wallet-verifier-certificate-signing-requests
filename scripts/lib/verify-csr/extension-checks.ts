@@ -46,8 +46,7 @@ export function checkNoExtensions(
     const named = extensions
       .map(
         (ext) =>
-          TRACKED_EXTENSIONS.find((t) => t.oid === ext.type)?.name ??
-          ext.type,
+          TRACKED_EXTENSIONS.find((t) => t.oid === ext.type)?.name ?? ext.type,
       )
       .join(', ');
     reporter.add({

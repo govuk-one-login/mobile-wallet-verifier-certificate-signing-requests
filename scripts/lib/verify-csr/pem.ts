@@ -29,10 +29,7 @@ export function decodePem(
   return decodeBase64Body(match[1]!, reporter);
 }
 
-function decodeBase64Body(
-  body: string,
-  reporter: Reporter,
-): Uint8Array | null {
+function decodeBase64Body(body: string, reporter: Reporter): Uint8Array | null {
   const stripped = body.replaceAll(/\s+/g, '');
   if (!/^[A-Za-z0-9+/]*={0,2}$/.test(stripped)) {
     reporter.add({

@@ -29,8 +29,7 @@ export async function checkCryptoProfile(
     return;
   }
   reporter.markEvaluated('KEY.CURVE', 'KEY.HASH');
-  const curve = (algorithm as KeyAlgorithm & { namedCurve: string })
-    .namedCurve;
+  const curve = (algorithm as KeyAlgorithm & { namedCurve: string }).namedCurve;
   checkCurve(curve, reporter);
   checkPairing(curve, csr, reporter);
 }
@@ -69,8 +68,7 @@ function checkPairing(
       rule: 'KEY.HASH',
       severity: 'error',
       message:
-        `Hash function must be SHA-256 or SHA-384; ` +
-        `found '${sigOid}'.`,
+        `Hash function must be SHA-256 or SHA-384; ` + `found '${sigOid}'.`,
     });
     return;
   }

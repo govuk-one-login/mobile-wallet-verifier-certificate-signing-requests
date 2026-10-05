@@ -10,10 +10,7 @@ import { webcrypto } from 'node:crypto';
 import * as x509 from '@peculiar/x509';
 import { Reporter } from './reporter.js';
 import { decodePem } from './pem.js';
-import {
-  checkCryptoProfile,
-  checkSignature,
-} from './crypto-checks.js';
+import { checkCryptoProfile, checkSignature } from './crypto-checks.js';
 import { checkSubjectDn } from './dn-checks.js';
 import { checkNoExtensions } from './extension-checks.js';
 import type {
@@ -84,7 +81,7 @@ const RULE_DEFINITIONS: readonly RuleDefinition[] = [
   },
 ] as const;
 
-// ── In-memory validation ────────────────────────────────────────────
+// In-memory validation
 
 /**
  * Validates a PEM-encoded CSR string entirely in memory.
@@ -108,7 +105,7 @@ export async function validatePem(
   return finalise(label, reporter, metadata);
 }
 
-// ── Internal helpers ────────────────────────────────────────────────
+// Internal helpers
 
 async function runChecks(
   der: Uint8Array,
@@ -129,9 +126,7 @@ function parseCsr(
 ): x509.Pkcs10CertificateRequest | null {
   reporter.markEvaluated('FORMAT.PKCS10');
   try {
-    return new x509.Pkcs10CertificateRequest(
-      der.buffer as ArrayBuffer,
-    );
+    return new x509.Pkcs10CertificateRequest(der.buffer as ArrayBuffer);
   } catch (err) {
     reporter.add({
       rule: 'FORMAT.PKCS10',
@@ -178,16 +173,14 @@ function finalise(
   };
 }
 
-// ── Report printing ─────────────────────────────────────────────────
+// Report printing
 
 export function printReport(report: ValidationReport): void {
   if (report.passed) {
     console.log(`✓ ${report.file}: all checks passed`);
     return;
   }
-  console.log(
-    `✗ ${report.file}: ${report.violations.length} violation(s)`,
-  );
+  console.log(`✗ ${report.file}: ${report.violations.length} violation(s)`);
   for (const v of report.violations) {
     console.log(`  [${v.rule}] ${v.message}`);
   }

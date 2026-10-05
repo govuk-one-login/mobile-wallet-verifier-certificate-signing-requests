@@ -9,13 +9,7 @@ const OID_OU = '2.5.4.11';
 const OID_CN = '2.5.4.3';
 const OID_SERIAL = '2.5.4.5';
 
-const MANDATORY_OIDS = new Set([
-  OID_C,
-  OID_O,
-  OID_OU,
-  OID_CN,
-  OID_SERIAL,
-]);
+const MANDATORY_OIDS = new Set([OID_C, OID_O, OID_OU, OID_CN, OID_SERIAL]);
 
 const REQUIRED_COUNTRY = 'GB';
 
@@ -80,9 +74,7 @@ function getAttributeStatus(
     return reporter.hasViolation('DN.C') ? 'failed' : 'passed';
   }
   if (oid === OID_SERIAL) {
-    return reporter.hasViolation('DN.SERIAL_UUIDV4')
-      ? 'failed'
-      : 'passed';
+    return reporter.hasViolation('DN.SERIAL_UUIDV4') ? 'failed' : 'passed';
   }
   return reporter.hasViolation('DN.NONEMPTY') &&
     (!value || value.trim().length === 0)
@@ -128,15 +120,9 @@ function checkAttributeSet(
 ): boolean {
   const oids = attrs.map((a) => a.oid);
   const uniqueOids = new Set(oids);
-  const missing = [...MANDATORY_OIDS].filter(
-    (oid) => !uniqueOids.has(oid),
-  );
-  const extras = [...uniqueOids].filter(
-    (oid) => !MANDATORY_OIDS.has(oid),
-  );
-  const duplicates = oids.filter(
-    (oid, i) => oids.indexOf(oid) !== i,
-  );
+  const missing = [...MANDATORY_OIDS].filter((oid) => !uniqueOids.has(oid));
+  const extras = [...uniqueOids].filter((oid) => !MANDATORY_OIDS.has(oid));
+  const duplicates = oids.filter((oid, i) => oids.indexOf(oid) !== i);
 
   if (
     missing.length ||
@@ -172,9 +158,7 @@ function buildAttributeSetMessage(
   if (missing.length)
     parts.push(`Missing: [${missing.map(oidLabel).join(', ')}].`);
   if (extras.length)
-    parts.push(
-      `Unexpected: [${extras.map(oidLabel).join(', ')}].`,
-    );
+    parts.push(`Unexpected: [${extras.map(oidLabel).join(', ')}].`);
   if (duplicates.length) {
     parts.push(
       `Duplicate: [${[...new Set(duplicates)].map(oidLabel).join(', ')}].`,
@@ -214,11 +198,7 @@ function checkSerial(value: string, reporter: Reporter): void {
   }
 }
 
-function checkNonEmpty(
-  oid: string,
-  value: string,
-  reporter: Reporter,
-): void {
+function checkNonEmpty(oid: string, value: string, reporter: Reporter): void {
   if (!value || value.trim().length === 0) {
     reporter.add({
       rule: 'DN.NONEMPTY',
