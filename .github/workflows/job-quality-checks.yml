@@ -5,8 +5,8 @@ on:
     inputs:
       RUN_SONARQUBE:
         description: Whether to run SonarQube checks.
-        type: string
-        default: "true"
+        type: boolean
+        default: true
       SONARQUBE_CONTINUE_ON_ERROR:
         description: Whether to continue running the workflow if SonarQube quality gate fails
         type: string
@@ -48,8 +48,16 @@ jobs:
           node-version-file: .nvmrc
 
       - name: Install dependencies
-        if: inputs.RUN_SONARQUBE == 'true' && github.actor != 'dependabot[bot]'
         run: npm ci --ignore-scripts
+
+      - name: Run lint
+        run: npm run lint
+
+      - name: Run format check
+        run: npm run format:check
+
+      - name: Run typecheck
+        run: npm run typecheck
 
       - name: Run lint check
         if: inputs.RUN_SONARQUBE == 'true' && github.actor != 'dependabot[bot]'
@@ -60,20 +68,19 @@ jobs:
         run: npm run format:check
 
       - name: Run tests with coverage
-        if: inputs.RUN_SONARQUBE == 'true' && github.actor != 'dependabot[bot]'
         run: npm test -- --coverage
 
       - name: Run SonarQube Scan
-        if: inputs.RUN_SONARQUBE == 'true' && github.actor != 'dependabot[bot]'
+        if: inputs.RUN_SONARQUBE && github.actor != 'dependabot[bot]' && github.event.pull_request.head.repo.fork != true
         uses: sonarsource/sonarqube-scan-action@ba9859eae8dd6bd29e412f25ddbbef3d032000f4 # v8.2.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
       - name: Run SonarQube Quality Gate Check
-        if: inputs.RUN_SONARQUBE == 'true' && github.actor != 'dependabot[bot]'
+        if: inputs.RUN_SONARQUBE && github.actor != 'dependabot[bot]' && github.event.pull_request.head.repo.fork != true
         uses: Sonarsource/sonarqube-quality-gate-action@8406f4f1edaffef38e9fb9c53eb292fc1d7684fa # v6.0.0
-        continue-on-error: ${{ fromJSON(env.CONTINUE_ON_ERROR) }}
+        continue-on-error: ${{ inputs.SONARQUBE_CONTINUE_ON_ERROR == 'true' }}
         timeout-minutes: 5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
