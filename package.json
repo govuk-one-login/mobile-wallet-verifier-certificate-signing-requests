@@ -12,7 +12,8 @@
     "test:all": "./node_modules/.bin/vitest run",
     "lint": "./node_modules/.bin/eslint .",
     "format": "./node_modules/.bin/prettier --write '**/*.{json,md,ts}'",
-    "format:check": "./node_modules/.bin/prettier --check '**/*.{json,md,ts}'"
+    "format:check": "./node_modules/.bin/prettier --check '**/*.{json,md,ts}'",
+    "issue-revoke-ca": "tsx scripts/issue-revoke-ca.ts"
   },
   "license": "MIT",
   "dependencies": {
@@ -24,6 +25,8 @@
     "@aws-sdk/client-sts": "3.1146.0",
     "@aws-sdk/s3-request-presigner": "3.1146.0",
     "@peculiar/asn1-x509": "2.10.0",
+    "@peculiar/asn1-csr": "2.10.0",
+    "@peculiar/asn1-schema": "2.10.0",
     "@peculiar/x509": "2.1.0",
     "esbuild": "0.28.2"
   },
@@ -43,6 +46,7 @@
     "prettier": "3.9.6",
     "reflect-metadata": "0.2.2",
     "typescript": "6.0.3",
+    "tsx": "4.23.15",
     "typescript-eslint": "8.68.0",
     "vitest": "4.1.11"
   }
