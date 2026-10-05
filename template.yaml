@@ -304,6 +304,16 @@ Resources:
                   - kms:Decrypt
                 Resource:
                   - !GetAtt CsrValidatedBucketKmsKey.Arn
+        - PolicyName: L3EnableDisableOperatorS3ListReceivedAndValidatedBucket
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                Resource:
+                  - !Sub "arn:aws:s3:::${CsrReceivedBucket}"
+                  - !Sub "arn:aws:s3:::${CsrValidatedBucket}"
 
   L3IssueRevokeOperatorRole:
     Type: AWS::IAM::Role
@@ -335,6 +345,41 @@ Resources:
                   - kms:Decrypt
                 Resource:
                   - !GetAtt CsrValidatedBucketKmsKey.Arn
+        - PolicyName: L3EnableDisableOperatorS3ListReceivedAndValidatedBucket
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                Resource:
+                  - !Sub "arn:aws:s3:::${CsrReceivedBucket}"
+                  - !Sub "arn:aws:s3:::${CsrValidatedBucket}"
+        - PolicyName: L3EnableDisableOperatorS3PutIntoCertsBucket
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource: !Sub
+                  - "arn:aws:s3:::${BucketName}/issued/*"
+                  - BucketName: !ImportValue
+                      Fn::Sub: "${IntCaBackendStackName}-IssuedCertsBucketName"
+        - PolicyName: L3EnableDisableOperatorS3ListCertsBucketCertPrefix
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                Resource: !Sub
+                  - "arn:aws:s3:::${BucketName}"
+                  - BucketName: !ImportValue
+                      Fn::Sub: "${IntCaBackendStackName}-IssuedCertsBucketName"
+                Condition:
+                  StringLike:
+                    s3:prefix: "issued/"
 
   Linear20PercentEvery1Minute:
     Type: AWS::CodeDeploy::DeploymentConfig

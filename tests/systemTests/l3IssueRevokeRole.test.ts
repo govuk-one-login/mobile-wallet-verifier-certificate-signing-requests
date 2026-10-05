@@ -3,6 +3,7 @@ import {
   S3Client,
   PutObjectCommand,
   DeleteObjectCommand,
+  ListObjectsV2Command,
 } from '@aws-sdk/client-s3';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 
@@ -98,7 +99,7 @@ describe('L3IssueRevokeOperator role - csr-received bucket', () => {
 });
 
 describe('L3IssueRevokeOperator role - issued certs bucket', () => {
-  it('denies s3:PutObject on issued/*', async () => {
+  it('allows s3:PutObject on issued/*', async () => {
     await expect(
       l3IssueRevokeOperatorS3.send(
         new PutObjectCommand({
@@ -107,6 +108,46 @@ describe('L3IssueRevokeOperator role - issued certs bucket', () => {
           Body: 'test',
         }),
       ),
+    ).resolves.toBeDefined();
+  });
+
+  it('allows s3:ListBucket on issued/ prefix', async () => {
+    await expect(
+      l3IssueRevokeOperatorS3.send(
+        new ListObjectsV2Command({
+          Bucket: issuedCertsBucket,
+          Prefix: 'issued/',
+        }),
+      ),
+    ).resolves.toBeDefined();
+  });
+
+  it('denies s3:ListBucket on other prefixes', async () => {
+    await expect(
+      l3IssueRevokeOperatorS3.send(
+        new ListObjectsV2Command({
+          Bucket: issuedCertsBucket,
+          Prefix: 'other/',
+        }),
+      ),
     ).rejects.toThrow(/not authorized/);
+  });
+});
+
+describe('L3IssueRevokeOperator role - s3:ListBucket on CSR buckets', () => {
+  it('allows s3:ListBucket on csr-received', async () => {
+    await expect(
+      l3IssueRevokeOperatorS3.send(
+        new ListObjectsV2Command({ Bucket: csrReceivedBucket }),
+      ),
+    ).resolves.toBeDefined();
+  });
+
+  it('allows s3:ListBucket on csr-validated', async () => {
+    await expect(
+      l3IssueRevokeOperatorS3.send(
+        new ListObjectsV2Command({ Bucket: csrValidatedBucket }),
+      ),
+    ).resolves.toBeDefined();
   });
 });

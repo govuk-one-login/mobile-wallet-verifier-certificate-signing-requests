@@ -143,14 +143,18 @@ defineFeature(l3EnableDisableFeature, (test) => {
     assertRoleConfig(then, and);
   });
 
-  // then + and = 1 S3 policy step
   test('IAM role has correct S3 policies', ({ given, then }) => {
     loadTemplate(given);
     const assert = makePolicyAssertion();
     then(POLICY_ACTIONS_PATTERN, assert);
   });
 
-  // then = 1 KMS policy step (2 KMS policies but combined into one scenario step each)
+  test('IAM role has correct S3 list policies', ({ given, then }) => {
+    loadTemplate(given);
+    const assert = makePolicyAssertion();
+    then(POLICY_ACTIONS_PATTERN, assert);
+  });
+
   test('IAM role has correct KMS policies', ({ given, then, and }) => {
     loadTemplate(given);
     const assert = makePolicyAssertion();
@@ -174,11 +178,18 @@ defineFeature(l3IssueRevokeFeature, (test) => {
     assertRoleConfig(then, and);
   });
 
-  // then = 1 KMS policy step
   test('IAM role has correct KMS policies', ({ given, then }) => {
     loadTemplate(given);
     const assert = makePolicyAssertion();
     then(POLICY_ACTIONS_PATTERN, assert);
+  });
+
+  test('IAM role has correct S3 policies', ({ given, then, and }) => {
+    loadTemplate(given);
+    const assert = makePolicyAssertion();
+    then(POLICY_ACTIONS_PATTERN, assert);
+    and(POLICY_ACTIONS_PATTERN, assert);
+    and(POLICY_ACTIONS_PATTERN, assert);
   });
 
   test('IAM role trust policy contains the correct SSO principal', ({

@@ -3,6 +3,7 @@ import {
   S3Client,
   PutObjectCommand,
   DeleteObjectCommand,
+  ListObjectsV2Command,
 } from '@aws-sdk/client-s3';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 
@@ -88,5 +89,21 @@ describe('L3EnableDisableOperator role S3 permissions', () => {
         }),
       ),
     ).rejects.toThrow(/not authorized/);
+  });
+
+  it('allows s3:ListBucket on csr-received', async () => {
+    await expect(
+      l3EnableDisableOperatorS3.send(
+        new ListObjectsV2Command({ Bucket: csrReceivedBucket }),
+      ),
+    ).resolves.toBeDefined();
+  });
+
+  it('allows s3:ListBucket on csr-validated', async () => {
+    await expect(
+      l3EnableDisableOperatorS3.send(
+        new ListObjectsV2Command({ Bucket: csrValidatedBucket }),
+      ),
+    ).resolves.toBeDefined();
   });
 });
