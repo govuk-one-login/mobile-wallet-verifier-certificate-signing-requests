@@ -51,6 +51,14 @@ jobs:
         if: inputs.RUN_SONARQUBE == 'true' && github.actor != 'dependabot[bot]'
         run: npm ci --ignore-scripts
 
+      - name: Run lint check
+        if: inputs.RUN_SONARQUBE == 'true' && github.actor != 'dependabot[bot]'
+        run: npm run lint
+
+      - name: Run format check
+        if: inputs.RUN_SONARQUBE == 'true' && github.actor != 'dependabot[bot]'
+        run: npm run format:check
+
       - name: Run tests with coverage
         if: inputs.RUN_SONARQUBE == 'true' && github.actor != 'dependabot[bot]'
         run: npm test -- --coverage

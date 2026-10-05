@@ -163,6 +163,8 @@ Resources:
     Type: AWS::S3::Bucket
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
+    DependsOn:
+      - CsrValidatorFunctionS3InvokePermission
     Properties:
       BucketName: !Sub "${AWS::AccountId}-${AWS::StackName}-csr-received"
       PublicAccessBlockConfiguration:
@@ -178,6 +180,10 @@ Resources:
             BucketKeyEnabled: true
       VersioningConfiguration:
         Status: Enabled
+      NotificationConfiguration:
+        LambdaConfigurations:
+          - Event: s3:ObjectCreated:*
+            Function: !Ref CsrValidatorFunction.Alias
       LoggingConfiguration:
         DestinationBucketName: !Sub "di-s3-access-logs-${AWS::AccountId}-${AWS::Region}"
         LogFilePrefix: "s3-access-logs/"
@@ -302,6 +308,27 @@ Resources:
             Action: sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+      Policies:
+        - PolicyName: CsrValidatorS3Access
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: s3:GetObject
+                Resource: !Sub "arn:aws:s3:::${AWS::AccountId}-${AWS::StackName}-csr-received/*"
+              - Effect: Allow
+                Action: s3:PutObject
+                Resource: !Sub "arn:aws:s3:::${AWS::AccountId}-${AWS::StackName}-csr-validated/*"
+        - PolicyName: CsrValidatorKmsAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: kms:Decrypt
+                Resource: !GetAtt CsrReceivedBucketKmsKey.Arn
+              - Effect: Allow
+                Action: kms:GenerateDataKey
+                Resource: !GetAtt CsrValidatedBucketKmsKey.Arn
       PermissionsBoundary: !If
         - UsePermissionsBoundary
         - !Ref PermissionsBoundary
@@ -332,6 +359,9 @@ Resources:
         - !Ref CodeSigningConfigArn
         - !Ref AWS::NoValue
       Role: !GetAtt CsrValidatorFunctionRole.Arn
+      Environment:
+        Variables:
+          CSR_VALIDATED_BUCKET: !Ref CsrValidatedBucket
       LoggingConfig:
         LogGroup: !Ref CsrValidatorFunctionLogGroup
       VpcConfig:
@@ -342,6 +372,14 @@ Resources:
           - Fn::ImportValue: !Sub ${VpcStackName}-PrivateSubnetIdB
           - Fn::ImportValue: !Sub ${VpcStackName}-PrivateSubnetIdC
 
+  CsrValidatorFunctionS3InvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref CsrValidatorFunction.Alias
+      Action: lambda:InvokeFunction
+      Principal: s3.amazonaws.com
+      SourceAccount: !Ref AWS::AccountId
+      SourceArn: !Sub "arn:aws:s3:::${AWS::AccountId}-${AWS::StackName}-csr-received"
 
 Outputs:
   CsrReceivedBucketKmsKeyArn:

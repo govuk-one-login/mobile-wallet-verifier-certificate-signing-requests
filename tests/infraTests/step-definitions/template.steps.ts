@@ -8,7 +8,6 @@ import {
   testRequiredSections,
   testEnvironmentParameter,
   testRequiredParameters,
-  ENVIRONMENT_VALUES,
 } from './shared-helpers/cfn-test-utils.js';
 
 const templateFeature = loadFeature(
@@ -257,6 +256,139 @@ defineFeature(validatorFunctionFeature, (test) => {
             ],
           });
         }
+      },
+    );
+  });
+
+  test('Function receives the validated bucket name via environment variable', ({
+    given,
+    then,
+  }) => {
+    loadTemplate(given);
+
+    then(
+      /^the "([^"]+)" function should set environment variable "([^"]+)" to Ref "([^"]+)"$/,
+      (functionName: string, envVar: string, refTarget: string) => {
+        const fn = template.Resources[functionName] as Record<string, unknown>;
+        const environment = (fn.Properties as Record<string, unknown>)
+          .Environment as Record<string, unknown>;
+        const variables = environment.Variables as Record<string, unknown>;
+        expect(variables[envVar]).toEqual({ Ref: refTarget });
+      },
+    );
+  });
+
+  test('Function role can read received CSRs and write validated CSRs', ({
+    given,
+    then,
+    and,
+  }) => {
+    loadTemplate(given);
+
+    const findStatementAction = (
+      roleName: string,
+      action: string,
+    ): Record<string, unknown> => {
+      const role = template.Resources[roleName] as Record<string, unknown>;
+      const policies = (role.Properties as Record<string, unknown>)
+        .Policies as Record<string, unknown>[];
+      const statements = policies.flatMap((policy) => {
+        const document = policy.PolicyDocument as Record<string, unknown>;
+        return document.Statement as Record<string, unknown>[];
+      });
+      const match = statements.find((statement) => {
+        const statementAction = statement.Action;
+        return Array.isArray(statementAction)
+          ? statementAction.includes(action)
+          : statementAction === action;
+      });
+      expect(match, `no statement found for action ${action}`).toBeDefined();
+      return match as Record<string, unknown>;
+    };
+
+    const expectS3Statement = (
+      roleName: string,
+      action: string,
+      bucketSuffix: string,
+    ) => {
+      const statement = findStatementAction(roleName, action);
+      expect(statement.Effect).toBe('Allow');
+      const resource = statement.Resource as Record<string, string>;
+      expect(resource['Fn::Sub']).toBe(
+        `arn:aws:s3:::\${AWS::AccountId}-\${AWS::StackName}-${bucketSuffix}/*`,
+      );
+    };
+
+    const expectKmsStatement = (
+      roleName: string,
+      action: string,
+      keyName: string,
+    ) => {
+      const statement = findStatementAction(roleName, action);
+      expect(statement.Effect).toBe('Allow');
+      expect(statement.Resource).toEqual({ 'Fn::GetAtt': `${keyName}.Arn` });
+    };
+
+    const s3Step =
+      /^the "([^"]+)" role should allow "([^"]+)" on the "([^"]+)" bucket objects$/;
+    const kmsStep =
+      /^the "([^"]+)" role should allow "([^"]+)" on key "([^"]+)"$/;
+
+    then(s3Step, expectS3Statement);
+    and(s3Step, expectS3Statement);
+    and(kmsStep, expectKmsStatement);
+    and(kmsStep, expectKmsStatement);
+  });
+
+  test('Received bucket triggers the validator function on object creation', ({
+    given,
+    then,
+    and,
+  }) => {
+    loadTemplate(given);
+
+    then(
+      /^the "([^"]+)" bucket should notify the "([^"]+)" alias on "([^"]+)"$/,
+      (bucketName: string, functionName: string, event: string) => {
+        const bucket = template.Resources[bucketName] as Record<
+          string,
+          unknown
+        >;
+        const notification = (bucket.Properties as Record<string, unknown>)
+          .NotificationConfiguration as Record<string, unknown>;
+        const lambdaConfigs = notification.LambdaConfigurations as Record<
+          string,
+          unknown
+        >[];
+        const config = lambdaConfigs.find((entry) => entry.Event === event);
+        expect(config, `no notification for event ${event}`).toBeDefined();
+        expect(config!.Function).toEqual({ Ref: `${functionName}.Alias` });
+      },
+    );
+
+    and(
+      /^S3 should be permitted to invoke the "([^"]+)" alias from the "([^"]+)" bucket$/,
+      (functionName: string, bucketSuffix: string) => {
+        const permission = Object.values(template.Resources).find(
+          (resource) => {
+            const typed = resource as Record<string, unknown>;
+            if (typed.Type !== 'AWS::Lambda::Permission') return false;
+            const props = typed.Properties as Record<string, unknown>;
+            return (
+              props.Principal === 's3.amazonaws.com' &&
+              JSON.stringify(props.FunctionName) ===
+                JSON.stringify({ Ref: `${functionName}.Alias` })
+            );
+          },
+        ) as Record<string, unknown> | undefined;
+        expect(permission, 'no S3 invoke permission found').toBeDefined();
+        const props = permission!.Properties as Record<string, unknown>;
+        expect(props.Action).toBe('lambda:InvokeFunction');
+        expect(props.SourceAccount).toEqual({ Ref: 'AWS::AccountId' });
+        const sourceArn = props.SourceArn as Record<string, string>;
+        expect(sourceArn['Fn::Sub']).toBe(
+          `arn:aws:s3:::\${AWS::AccountId}-\${AWS::StackName}-${bucketSuffix}`,
+        );
       },
     );
   });
