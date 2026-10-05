@@ -26,9 +26,7 @@ import {
 type LoggedCheck = { rule: string; status: string; message?: string };
 type ResultViolation = { rule: string; message: string };
 
-const ARCHIVED_FIVE_ATTRIBUTE_SUBJECT =
-  '2.5.4.5=8b1f9c4e-2d44-4a76-9c1b-2f1a3b4c5d6e, CN=DVS Acme Sub-CA, ' +
-  'OU=DVS PKI Operations, O=Acme Ltd, C=GB';
+const THREE_ATTRIBUTE_SUBJECT = 'CN=DVS Acme Sub-CA, O=Acme Ltd, C=GB';
 
 describe('Handler - Validation failures', () => {
   let context: Context;
@@ -74,7 +72,8 @@ describe('Handler - Validation failures', () => {
         await buildCsr({
           namedCurve: 'P-384',
           hash: 'SHA-384',
-          subject: 'CN=DVS Acme Sub-CA, O=Acme Ltd, C=US',
+          subject:
+            '2.5.4.5=8b1f9c4e-2d44-4a76-9c1b-2f1a3b4c5d6e, CN=DVS Acme Sub-CA, OU=DVS PKI Operations, O=Acme Ltd, C=US',
         }),
       );
     });
@@ -98,7 +97,8 @@ describe('Handler - Validation failures', () => {
       expect(record).toStrictEqual({
         status: 'fail',
         sha256,
-        subjectDn: 'CN=DVS Acme Sub-CA,O=Acme Ltd,C=US',
+        subjectDn:
+          'C=US,O=Acme Ltd,OU=DVS PKI Operations,CN=DVS Acme Sub-CA,serialNumber=8b1f9c4e-2d44-4a76-9c1b-2f1a3b4c5d6e',
         violations: expect.any(Array),
       });
       expect(record.violations.map(({ rule }) => rule).sort()).toStrictEqual(
@@ -128,7 +128,8 @@ describe('Handler - Validation failures', () => {
         sourceVersionId: VERSION_ID,
         sha256,
         resultKey: `failed/${sha256}.json`,
-        subjectDn: 'CN=DVS Acme Sub-CA,O=Acme Ltd,C=US',
+        subjectDn:
+          'C=US,O=Acme Ltd,OU=DVS PKI Operations,CN=DVS Acme Sub-CA,serialNumber=8b1f9c4e-2d44-4a76-9c1b-2f1a3b4c5d6e',
       });
     });
 
@@ -138,10 +139,10 @@ describe('Handler - Validation failures', () => {
       );
     });
 
-    it('logs all 10 checks, each failed one carrying its violation message', () => {
+    it('logs all 11 checks, each failed one carrying its violation message', () => {
       const { checks, violations } = completedEntry();
 
-      expect(checks).toHaveLength(10);
+      expect(checks).toHaveLength(11);
       for (const { rule, message } of violations) {
         expect(checks.find((check) => check.rule === rule)).toMatchObject({
           status: 'failed',
@@ -158,11 +159,9 @@ describe('Handler - Validation failures', () => {
     });
   });
 
-  describe('Given a CSR with the archived five-attribute subject', () => {
+  describe('Given a CSR with a wrong attribute set (three-attribute subject)', () => {
     beforeEach(async () => {
-      await invokeWith(
-        await buildCsr({ subject: ARCHIVED_FIVE_ATTRIBUTE_SUBJECT }),
-      );
+      await invokeWith(await buildCsr({ subject: THREE_ATTRIBUTE_SUBJECT }));
     });
 
     it('writes a fail record under failed/<sha256> with a null subjectDn', () => {

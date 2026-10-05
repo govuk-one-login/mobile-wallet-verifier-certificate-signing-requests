@@ -10,7 +10,8 @@ export type RuleId =
   | 'DN.ATTRIBUTES'
   | 'DN.C'
   | 'DN.NONEMPTY'
-  | 'EXT.NONE';
+  | 'DN.SERIAL_UUIDV4'
+  | 'EXT.PERMITTED';
 
 export interface RuleDefinition {
   rule: RuleId;

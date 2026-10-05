@@ -3,16 +3,23 @@ import { CertificationRequest } from '@peculiar/asn1-csr';
 import type { Reporter } from './reporter.ts';
 import type { CheckStatus, DnAttribute } from './types.ts';
 
-const OID_CN = '2.5.4.3';
-const OID_O = '2.5.4.10';
 const OID_C = '2.5.4.6';
+const OID_O = '2.5.4.10';
+const OID_OU = '2.5.4.11';
+const OID_CN = '2.5.4.3';
+const OID_SERIAL = '2.5.4.5';
 
 export const REQUIRED_COUNTRY = 'GB';
 
+const UUID_V4_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+
 const DN_DISPLAY_ORDER: { oid: string; name: string }[] = [
-  { oid: OID_CN, name: 'CN' },
-  { oid: OID_O, name: 'O' },
   { oid: OID_C, name: 'C' },
+  { oid: OID_O, name: 'O' },
+  { oid: OID_OU, name: 'OU' },
+  { oid: OID_CN, name: 'CN' },
+  { oid: OID_SERIAL, name: 'serialNumber' },
 ];
 
 const MANDATORY_OIDS = new Set(DN_DISPLAY_ORDER.map(({ oid }) => oid));
@@ -31,7 +38,7 @@ export function checkSubjectDn(
   if (!checkAttributeSet(attrs, reporter)) {
     return buildDnAttributes(attrs, 'skipped');
   }
-  reporter.markEvaluated('DN.C', 'DN.NONEMPTY');
+  reporter.markEvaluated('DN.C', 'DN.NONEMPTY', 'DN.SERIAL_UUIDV4');
   checkAttributeValues(attrs, reporter);
   return buildDnAttributes(attrs, 'passed', reporter);
 }
@@ -59,6 +66,9 @@ function getAttributeStatus(
 ): CheckStatus {
   if (oid === OID_C) {
     return reporter.hasViolation('DN.C') ? 'failed' : 'passed';
+  }
+  if (oid === OID_SERIAL) {
+    return reporter.hasViolation('DN.SERIAL_UUIDV4') ? 'failed' : 'passed';
   }
   return reporter.hasViolation('DN.NONEMPTY') && isBlank(value)
     ? 'failed'
@@ -133,7 +143,7 @@ function buildAttributeSetMessage(
   total: number,
 ): string {
   const parts: string[] = [
-    `Subject DN must contain exactly 3 attributes (CN, O, C); found ${total}.`,
+    `Subject DN must contain exactly 5 attributes (C, O, OU, CN, serialNumber); found ${total}.`,
   ];
   if (missing.length) {
     parts.push(`Missing: [${missing.map(oidLabel).join(', ')}].`);
@@ -154,6 +164,7 @@ function checkAttributeValues(
 ): void {
   for (const { oid, value } of attrs) {
     if (oid === OID_C) checkCountry(value, reporter);
+    else if (oid === OID_SERIAL) checkSerial(value, reporter);
     else checkNonEmpty(oid, value, reporter);
   }
 }
@@ -163,6 +174,15 @@ function checkCountry(value: string, reporter: Reporter): void {
     reporter.add({
       rule: 'DN.C',
       message: `Subject 'C' must be '${REQUIRED_COUNTRY}'; found '${value}'.`,
+    });
+  }
+}
+
+function checkSerial(value: string, reporter: Reporter): void {
+  if (!UUID_V4_RE.test(value)) {
+    reporter.add({
+      rule: 'DN.SERIAL_UUIDV4',
+      message: `Subject 'serialNumber' must be a UUID v4; found '${value}'.`,
     });
   }
 }

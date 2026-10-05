@@ -86,12 +86,15 @@ describe('formatSubjectDn', () => {
     expect(dn).toBe(String.raw`CN=Evil\,O=Trusted Org,O=Acme Ltd,C=GB`);
   });
 
-  it('formats the subject parsed from a real CSR in CN, O, C order', async () => {
-    const pem = await buildCsr({ subject: 'C=GB, O=DVS.COM, CN=DVS' });
+  it('formats the subject parsed from a real CSR in C, O, OU, CN, serialNumber order', async () => {
+    const serial = '8b1f9c4e-2d44-4a76-9c1b-2f1a3b4c5d6e';
+    const pem = await buildCsr({
+      subject: `2.5.4.5=${serial}, CN=DVS, OU=DVS PKI Operations, O=DVS.COM, C=GB`,
+    });
     const report = await validateCsrText(pem);
 
     expect(formatSubjectDn(report.metadata!.subjectDn)).toBe(
-      'CN=DVS,O=DVS.COM,C=GB',
+      `C=GB,O=DVS.COM,OU=DVS PKI Operations,CN=DVS,serialNumber=${serial}`,
     );
   });
 });

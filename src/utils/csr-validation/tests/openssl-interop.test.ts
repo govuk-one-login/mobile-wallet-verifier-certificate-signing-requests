@@ -74,7 +74,11 @@ function generateOpensslRsaCsr(name: string, subject: string): string {
 }
 
 function dvsSubject(): string {
-  return `/CN=DVS Acme Sub-CA/O=Acme Ltd/C=${REQUIRED_COUNTRY}`;
+  const serial = '8b1f9c4e-2d44-4a76-9c1b-2f1a3b4c5d6e';
+  return (
+    `/C=${REQUIRED_COUNTRY}/O=Acme Ltd/OU=DVS PKI Operations` +
+    `/CN=DVS Acme Sub-CA/serialNumber=${serial}`
+  );
 }
 
 async function validateGenerated(path: string): Promise<ValidationReport> {
@@ -128,8 +132,6 @@ describeIfOpenssl('OpenSSL interop', () => {
     });
     const report = await validateGenerated(path);
     expect(report.passed).toBe(false);
-    // secp256k1 also fails signature verification under WebCrypto, so assert
-    // KEY.CURVE is among the violations rather than the only one.
     expect(report.violations.map((v) => v.rule)).toContain('KEY.CURVE');
   });
 
@@ -151,7 +153,42 @@ describeIfOpenssl('OpenSSL interop', () => {
     expect(report.violations.map((v) => v.rule)).toContain('KEY.TYPE_EC');
   });
 
-  it('rejects a real openssl-generated CSR with basicConstraints + keyUsage extensions', async () => {
+  it('accepts a real openssl-generated CSR with only basicConstraints CA:TRUE', async () => {
+    const serial = '8b1f9c4e-2d44-4a76-9c1b-2f1a3b4c5d6e';
+    const cnfPath = join(workDir, 'interop-bc.cnf');
+    await writeFile(
+      cnfPath,
+      [
+        '[req]',
+        'distinguished_name = dn',
+        'req_extensions = v3_req',
+        'prompt = no',
+        '[dn]',
+        `C = ${REQUIRED_COUNTRY}`,
+        'O = Acme Ltd',
+        'OU = DVS PKI Operations',
+        'CN = DVS Ext Sub-CA',
+        `serialNumber = ${serial}`,
+        '[v3_req]',
+        'basicConstraints = critical,CA:TRUE,pathlen:0',
+        '',
+      ].join('\n'),
+      'utf8',
+    );
+    const path = generateOpensslCsr('interop-bc', {
+      curve: 'prime256v1',
+      digest: '-sha256',
+      subject: '',
+      extensionsConfig: cnfPath,
+    });
+    const report = await validateGenerated(path);
+    expect(report.passed, JSON.stringify(report.violations, null, 2)).toBe(
+      true,
+    );
+  });
+
+  it('rejects a real openssl-generated CSR with a prohibited keyUsage extension', async () => {
+    const serial = '8b1f9c4e-2d44-4a76-9c1b-2f1a3b4c5d6e';
     const cnfPath = join(workDir, 'interop-ext.cnf');
     await writeFile(
       cnfPath,
@@ -161,9 +198,11 @@ describeIfOpenssl('OpenSSL interop', () => {
         'req_extensions = v3_req',
         'prompt = no',
         '[dn]',
-        'CN = DVS Ext Sub-CA',
-        'O = Ext Org',
         `C = ${REQUIRED_COUNTRY}`,
+        'O = Ext Org',
+        'OU = DVS PKI Operations',
+        'CN = DVS Ext Sub-CA',
+        `serialNumber = ${serial}`,
         '[v3_req]',
         'basicConstraints = critical,CA:TRUE,pathlen:0',
         'keyUsage = critical,keyCertSign,cRLSign',
@@ -179,9 +218,17 @@ describeIfOpenssl('OpenSSL interop', () => {
     });
     const report = await validateGenerated(path);
     expect(report.passed).toBe(false);
-    const ext = report.violations.find((v) => v.rule === 'EXT.NONE');
-    expect(ext).toBeDefined();
-    expect(ext!.message).toContain('basicConstraints');
-    expect(ext!.message).toContain('keyUsage');
+    const extViolations = report.violations.filter(
+      (v) => v.rule === 'EXT.PERMITTED',
+    );
+    expect(extViolations.length).toBeGreaterThan(0);
+    expect(extViolations.some((v) => v.message.includes('keyUsage'))).toBe(
+      true,
+    );
+    expect(
+      extViolations.some((v) =>
+        v.message.includes('must not contain the basicConstraints'),
+      ),
+    ).toBe(false);
   });
 });

@@ -8,7 +8,7 @@ import { decodePem } from './pem.ts';
 import { sha256Hex } from './fingerprint.ts';
 import { checkCryptoProfile, checkSignature } from './crypto-checks.ts';
 import { checkSubjectDn } from './dn-checks.ts';
-import { checkNoExtensions } from './extension-checks.ts';
+import { checkPermittedExtensions } from './extension-checks.ts';
 import type {
   CheckStatus,
   CsrMetadata,
@@ -51,7 +51,11 @@ export const RULE_DEFINITIONS: readonly RuleDefinition[] = [
     section: 'Subject DN',
   },
   {
-    rule: 'EXT.NONE',
+    rule: 'DN.SERIAL_UUIDV4',
+    section: 'Subject DN',
+  },
+  {
+    rule: 'EXT.PERMITTED',
     section: 'Extensions',
   },
 ] as const;
@@ -93,8 +97,8 @@ async function runChecks(
   const subjectDn = await guarded('DN.ATTRIBUTES', reporter, [], () =>
     checkSubjectDn(der, reporter),
   );
-  const extensions = await guarded('EXT.NONE', reporter, [], () =>
-    checkNoExtensions(der, reporter),
+  const extensions = await guarded('EXT.PERMITTED', reporter, [], () =>
+    checkPermittedExtensions(der, csr, reporter),
   );
   return { subjectDn, extensions };
 }

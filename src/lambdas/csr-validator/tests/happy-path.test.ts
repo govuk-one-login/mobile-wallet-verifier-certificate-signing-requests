@@ -35,7 +35,10 @@ describe('Handler - Happy path', () => {
   beforeEach(async () => {
     consoleSpies = spyOnConsole();
     context = buildLambdaContext();
-    pem = await buildCsr({ subject: 'CN=DVS, O=DVS.COM, C=GB' });
+    pem = await buildCsr({
+      subject:
+        '2.5.4.5=f47ac10b-58cc-4372-a567-0e02b2c3d479, CN=DVS, OU=DVS PKI Operations, O=DVS.COM, C=GB',
+    });
     csrBytes = toBytes(pem);
     sha256 = sha256Hex(derOf(pem));
     dependencies = buildValidHandlerDependencies(csrBytes);
@@ -81,7 +84,8 @@ describe('Handler - Happy path', () => {
       expect(JSON.parse(recordCall!.body as string)).toStrictEqual({
         status: 'pass',
         sha256,
-        subjectDn: 'CN=DVS,O=DVS.COM,C=GB',
+        subjectDn:
+          'C=GB,O=DVS.COM,OU=DVS PKI Operations,CN=DVS,serialNumber=f47ac10b-58cc-4372-a567-0e02b2c3d479',
         violations: [],
       });
     });
@@ -101,12 +105,13 @@ describe('Handler - Happy path', () => {
         sourceVersionId: VERSION_ID,
         sha256,
         resultKey: `validated/${sha256}.json`,
-        subjectDn: 'CN=DVS,O=DVS.COM,C=GB',
+        subjectDn:
+          'C=GB,O=DVS.COM,OU=DVS PKI Operations,CN=DVS,serialNumber=f47ac10b-58cc-4372-a567-0e02b2c3d479',
         violations: [],
       });
     });
 
-    it('logs all 10 checks as passed', () => {
+    it('logs all 11 checks as passed', () => {
       const [entry] = logEntriesOf(
         consoleSpies.info,
         'CSR_VALIDATOR_COMPLETED',
@@ -119,7 +124,7 @@ describe('Handler - Happy path', () => {
           status: 'passed',
         })),
       );
-      expect(entry!.checks).toHaveLength(10);
+      expect(entry!.checks).toHaveLength(11);
     });
 
     it('does not log the PEM or its base64 body', () => {

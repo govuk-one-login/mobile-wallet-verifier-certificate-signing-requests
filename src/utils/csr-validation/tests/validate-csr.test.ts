@@ -5,28 +5,40 @@ import { REQUIRED_COUNTRY } from '../dn-checks.ts';
 import type { RuleId, ValidationReport } from '../types.ts';
 import { AsnConvert } from '@peculiar/asn1-schema';
 import { Attribute, AttributeValue, Extensions } from '@peculiar/asn1-x509';
-import { buildCsr, derOf, mutateCsr, toPem } from './utils/builders.ts';
+import {
+  buildCsr,
+  DEFAULT_SERIAL,
+  derOf,
+  mutateCsr,
+  toPem,
+} from './utils/builders.ts';
 
 const sha1SigningSupported = await buildCsr({ hash: 'SHA-1' }).then(
   () => true,
   () => false,
 );
 
-const ARCHIVED_SUBJECT =
-  '2.5.4.5=8b1f9c4e-2d44-4a76-9c1b-2f1a3b4c5d6e, CN=DVS Acme Sub-CA, ' +
-  'OU=DVS PKI Operations, O=Acme Ltd, C=GB';
+const THREE_ATTRIBUTE_SUBJECT = `CN=DVS Acme Sub-CA, O=Acme Ltd, C=${REQUIRED_COUNTRY}`;
 
 const WRONG_COUNTRIES = ['UK', 'GB', 'US', 'GBR'].filter(
   (c) => c !== REQUIRED_COUNTRY,
 );
 
-function subjectWith(parts: { cn?: string; o?: string; c?: string }): string {
+function subjectWith(parts: {
+  cn?: string;
+  o?: string;
+  ou?: string;
+  c?: string;
+  serial?: string;
+}): string {
   const {
     cn = 'DVS Acme Sub-CA',
     o = 'Acme Ltd',
+    ou = 'DVS PKI Operations',
     c = REQUIRED_COUNTRY,
+    serial = DEFAULT_SERIAL,
   } = parts;
-  return `CN=${cn}, O=${o}, C=${c}`;
+  return `2.5.4.5=${serial}, CN=${cn}, OU=${ou}, O=${o}, C=${c}`;
 }
 
 async function runOn(pem: string): Promise<ValidationReport> {
@@ -52,7 +64,6 @@ function messageOf(report: ValidationReport, rule: RuleId): string {
   return report.violations.find((v) => v.rule === rule)?.message ?? '';
 }
 
-/** Re-encodes the outer SEQUENCE length with one superfluous leading byte. */
 function withNonMinimalOuterLength(der: Uint8Array): Uint8Array {
   const lengthOctets = der[1]! & 0x7f;
   const length = der.subarray(2, 2 + lengthOctets);
@@ -92,7 +103,7 @@ function expectSinglePemFailure(report: ValidationReport): void {
 }
 
 describe('validate-csr — happy paths', () => {
-  it('accepts a valid P-256 / SHA-256 CSR', async () => {
+  it('accepts a valid Sub-CA P-256 / SHA-256 CSR', async () => {
     const report = await runOn(await buildCsr());
     expect(report.passed, JSON.stringify(report.violations, null, 2)).toBe(
       true,
@@ -103,25 +114,53 @@ describe('validate-csr — happy paths', () => {
     expect(REQUIRED_COUNTRY).toBe('GB');
   });
 
-  it('accepts the reference DN with the literal country', async () => {
-    const subject = 'CN=DVS, O=DVS.COM, C=GB';
-    const report = await runOn(await buildCsr({ subject }));
+  it('accepts a CSR with basicConstraints CA:TRUE and no pathLen', async () => {
+    const ext = new x509.BasicConstraintsExtension(true, undefined, false);
+    const report = await runOn(await buildCsr({ extensions: [ext] }));
     expect(report.passed, JSON.stringify(report.violations, null, 2)).toBe(
       true,
     );
   });
 
-  it('returns subject DN metadata in CN, O, C order', async () => {
+  it('accepts a CSR with basicConstraints CA:TRUE and pathLen 0', async () => {
+    const ext = new x509.BasicConstraintsExtension(true, 0, false);
+    const report = await runOn(await buildCsr({ extensions: [ext] }));
+    expect(report.passed, JSON.stringify(report.violations, null, 2)).toBe(
+      true,
+    );
+  });
+
+  it('accepts a CSR with no extensions at all', async () => {
+    const report = await runOn(await buildCsr({ extensions: [] }));
+    expect(report.passed, JSON.stringify(report.violations, null, 2)).toBe(
+      true,
+    );
+    expect(statusOf(report, 'EXT.PERMITTED')).toBe('passed');
+  });
+
+  it('returns subject DN metadata in C, O, OU, CN, serialNumber order', async () => {
     const report = await runOn(await buildCsr());
     expect(report.metadata?.subjectDn).toEqual([
+      { name: 'C', oid: '2.5.4.6', value: REQUIRED_COUNTRY, status: 'passed' },
+      { name: 'O', oid: '2.5.4.10', value: 'Acme Ltd', status: 'passed' },
+      {
+        name: 'OU',
+        oid: '2.5.4.11',
+        value: 'DVS PKI Operations',
+        status: 'passed',
+      },
       {
         name: 'CN',
         oid: '2.5.4.3',
         value: 'DVS Acme Sub-CA',
         status: 'passed',
       },
-      { name: 'O', oid: '2.5.4.10', value: 'Acme Ltd', status: 'passed' },
-      { name: 'C', oid: '2.5.4.6', value: REQUIRED_COUNTRY, status: 'passed' },
+      {
+        name: 'serialNumber',
+        oid: '2.5.4.5',
+        value: DEFAULT_SERIAL,
+        status: 'passed',
+      },
     ]);
   });
 });
@@ -281,36 +320,42 @@ describe('validate-csr — crypto profile checks', () => {
 });
 
 describe('validate-csr — Subject DN checks', () => {
-  it('rejects the archived five-attribute subject', async () => {
-    const report = await runOn(await buildCsr({ subject: ARCHIVED_SUBJECT }));
+  it('rejects a three-attribute subject (CN, O, C)', async () => {
+    const report = await runOn(
+      await buildCsr({ subject: THREE_ATTRIBUTE_SUBJECT }),
+    );
     expect(rulesOf(report)).toEqual(['DN.ATTRIBUTES']);
     const message = messageOf(report, 'DN.ATTRIBUTES');
-    expect(message).toContain('exactly 3 attributes (CN, O, C)');
-    expect(message).toContain('found 5');
-    expect(message).toContain('2.5.4.5');
-    expect(message).toContain('2.5.4.11');
+    expect(message).toContain(
+      'exactly 5 attributes (C, O, OU, CN, serialNumber)',
+    );
+    expect(message).toContain('found 3');
+    expect(message).toContain('Missing: [OU, serialNumber]');
   });
 
-  it('skips DN value rules for the archived subject', async () => {
-    const report = await runOn(await buildCsr({ subject: ARCHIVED_SUBJECT }));
+  it('skips DN value rules for a wrong attribute set', async () => {
+    const report = await runOn(
+      await buildCsr({ subject: THREE_ATTRIBUTE_SUBJECT }),
+    );
     expect(statusOf(report, 'DN.ATTRIBUTES')).toBe('failed');
     expect(statusOf(report, 'DN.C')).toBe('skipped');
     expect(statusOf(report, 'DN.NONEMPTY')).toBe('skipped');
+    expect(statusOf(report, 'DN.SERIAL_UUIDV4')).toBe('skipped');
   });
 
   it('rejects a missing O', async () => {
-    const subject = `CN=DVS Acme Sub-CA, C=${REQUIRED_COUNTRY}`;
+    const subject = `2.5.4.5=${DEFAULT_SERIAL}, CN=DVS Acme Sub-CA, OU=DVS PKI Operations, C=${REQUIRED_COUNTRY}`;
     const report = await runOn(await buildCsr({ subject }));
     expect(rulesOf(report)).toEqual(['DN.ATTRIBUTES']);
     expect(messageOf(report, 'DN.ATTRIBUTES')).toContain('Missing: [O]');
   });
 
-  it('rejects an extra OU attribute', async () => {
-    const subject = `${subjectWith({})}, OU=DVS PKI Operations`;
+  it('rejects an extra attribute beyond the mandatory five', async () => {
+    const subject = `${subjectWith({})}, 2.5.4.4=Surname`;
     const report = await runOn(await buildCsr({ subject }));
     expect(rulesOf(report)).toEqual(['DN.ATTRIBUTES']);
     expect(messageOf(report, 'DN.ATTRIBUTES')).toContain(
-      'Unexpected: [2.5.4.11]',
+      'Unexpected: [2.5.4.4]',
     );
   });
 
@@ -343,9 +388,11 @@ describe('validate-csr — Subject DN checks', () => {
     expect(rulesOf(report)).toEqual(['DN.NONEMPTY']);
     expect(messageOf(report, 'DN.NONEMPTY')).toContain("'CN'");
     expect(dnStatuses(report)).toEqual({
-      CN: 'failed',
-      O: 'passed',
       C: 'passed',
+      O: 'passed',
+      OU: 'passed',
+      CN: 'failed',
+      serialNumber: 'passed',
     });
   });
 
@@ -355,10 +402,54 @@ describe('validate-csr — Subject DN checks', () => {
     expect(rulesOf(report)).toEqual(['DN.NONEMPTY']);
     expect(messageOf(report, 'DN.NONEMPTY')).toContain("'O'");
     expect(dnStatuses(report)).toEqual({
-      CN: 'passed',
-      O: 'failed',
       C: 'passed',
+      O: 'failed',
+      OU: 'passed',
+      CN: 'passed',
+      serialNumber: 'passed',
     });
+  });
+
+  it('rejects a blank OU', async () => {
+    const subject = subjectWith({ ou: '" "' });
+    const report = await runOn(await buildCsr({ subject }));
+    expect(rulesOf(report)).toEqual(['DN.NONEMPTY']);
+    expect(messageOf(report, 'DN.NONEMPTY')).toContain("'OU'");
+    expect(dnStatuses(report).OU).toBe('failed');
+  });
+});
+
+describe('validate-csr — serialNumber (UUID v4) checks', () => {
+  it.each([
+    { scenario: 'not a UUID', serial: 'not-a-uuid' },
+    { scenario: 'UUID v1', serial: '8b1f9c4e-2d44-1a76-9c1b-2f1a3b4c5d6e' },
+    {
+      scenario: 'wrong variant nibble',
+      serial: '8b1f9c4e-2d44-4a76-7c1b-2f1a3b4c5d6e',
+    },
+    { scenario: 'uppercase hex', serial: DEFAULT_SERIAL.toUpperCase() },
+  ])('rejects serialNumber that is $scenario', async ({ serial }) => {
+    const report = await runOn(
+      await buildCsr({ subject: subjectWith({ serial }) }),
+    );
+    expect(rulesOf(report)).toEqual(['DN.SERIAL_UUIDV4']);
+    expect(messageOf(report, 'DN.SERIAL_UUIDV4')).toContain(
+      'must be a UUID v4',
+    );
+    const serialAttr = report.metadata?.subjectDn.find(
+      (a) => a.name === 'serialNumber',
+    );
+    expect(serialAttr?.status).toBe('failed');
+  });
+
+  it('accepts a lowercase UUID v4 serialNumber', async () => {
+    const serial = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
+    const report = await runOn(
+      await buildCsr({ subject: subjectWith({ serial }) }),
+    );
+    expect(report.passed, JSON.stringify(report.violations, null, 2)).toBe(
+      true,
+    );
   });
 });
 
@@ -375,7 +466,8 @@ describe('validate-csr — Subject DN string encodings', () => {
       const report = await runOn(pem);
       expect(rulesOf(report)).toEqual(['FORMAT.SIGNATURE']);
       expect(statusOf(report, 'DN.NONEMPTY')).toBe('passed');
-      expect(report.metadata?.subjectDn[0]).toMatchObject({
+      const cn = report.metadata?.subjectDn.find((a) => a.name === 'CN');
+      expect(cn).toMatchObject({
         name: 'CN',
         value: 'DVS Acme Sub-CA',
         status: 'passed',
@@ -384,12 +476,19 @@ describe('validate-csr — Subject DN string encodings', () => {
   );
 });
 
-describe('validate-csr — extension prohibitions', () => {
-  it('rejects basicConstraints extension', async () => {
-    const ext = new x509.BasicConstraintsExtension(true, 0, true);
+describe('validate-csr — extension rules', () => {
+  it('rejects basicConstraints with CA:FALSE', async () => {
+    const ext = new x509.BasicConstraintsExtension(false, undefined, false);
     const report = await runOn(await buildCsr({ extensions: [ext] }));
-    expectViolations(report, ['EXT.NONE']);
-    expect(messageOf(report, 'EXT.NONE')).toContain('basicConstraints');
+    expectViolations(report, ['EXT.PERMITTED']);
+    expect(messageOf(report, 'EXT.PERMITTED')).toContain('CA:TRUE');
+  });
+
+  it('rejects basicConstraints with pathLen >= 1', async () => {
+    const ext = new x509.BasicConstraintsExtension(true, 1, false);
+    const report = await runOn(await buildCsr({ extensions: [ext] }));
+    expectViolations(report, ['EXT.PERMITTED']);
+    expect(messageOf(report, 'EXT.PERMITTED')).toContain('pathLen 1');
   });
 
   it('rejects keyUsage extension', async () => {
@@ -398,8 +497,8 @@ describe('validate-csr — extension prohibitions', () => {
       true,
     );
     const report = await runOn(await buildCsr({ extensions: [ext] }));
-    expectViolations(report, ['EXT.NONE']);
-    expect(messageOf(report, 'EXT.NONE')).toContain('keyUsage');
+    expectViolations(report, ['EXT.PERMITTED']);
+    expect(messageOf(report, 'EXT.PERMITTED')).toContain('keyUsage');
   });
 
   it('rejects an untracked extension (subjectAltName)', async () => {
@@ -407,8 +506,8 @@ describe('validate-csr — extension prohibitions', () => {
       { type: 'dns', value: 'a.example' },
     ]);
     const report = await runOn(await buildCsr({ extensions: [ext] }));
-    expect(rulesOf(report)).toEqual(['EXT.NONE']);
-    expect(messageOf(report, 'EXT.NONE')).toContain('2.5.29.17');
+    expect(rulesOf(report)).toEqual(['EXT.PERMITTED']);
+    expect(messageOf(report, 'EXT.PERMITTED')).toContain('2.5.29.17');
     expect(report.metadata?.extensions).toContainEqual({
       name: '2.5.29.17',
       oid: '2.5.29.17',
@@ -416,45 +515,62 @@ describe('validate-csr — extension prohibitions', () => {
     });
   });
 
-  it('reports no extensions present in metadata for a valid CSR', async () => {
+  it('reports only basicConstraints present in metadata for a valid CSR', async () => {
     const report = await runOn(await buildCsr());
+    const extensions = report.metadata?.extensions ?? [];
+    expect(extensions).toHaveLength(6);
+    const present = extensions.filter((e) => e.present).map((e) => e.name);
+    expect(present).toEqual(['basicConstraints']);
+  });
+
+  it('reports no extensions present in metadata when none requested', async () => {
+    const report = await runOn(await buildCsr({ extensions: [] }));
     const extensions = report.metadata?.extensions ?? [];
     expect(extensions).toHaveLength(6);
     expect(extensions.every((e) => !e.present)).toBe(true);
   });
 
-  it('flags only basicConstraints as present in metadata', async () => {
-    const ext = new x509.BasicConstraintsExtension(true, 0, true);
-    const report = await runOn(await buildCsr({ extensions: [ext] }));
-    const present = report.metadata?.extensions
-      .filter((e) => e.present)
-      .map((e) => e.name);
-    expect(present).toEqual(['basicConstraints']);
-  });
-
-  it('rejects extensions hidden in a second extensionRequest value', async () => {
-    const ext = new x509.BasicConstraintsExtension(true, 0, true);
+  it('rejects prohibited extensions hidden in a second extensionRequest value', async () => {
+    const ext = new x509.KeyUsagesExtension(
+      x509.KeyUsageFlags.keyCertSign,
+      true,
+    );
     const pem = mutateCsr(await buildCsr({ extensions: [ext] }), (asn) => {
       const empty = AsnConvert.serialize(new Extensions());
       asn.certificationRequestInfo.attributes[0]!.values.unshift(empty);
     });
     const report = await runOn(pem);
-    expect(messageOf(report, 'EXT.NONE')).toContain('basicConstraints');
+    expect(messageOf(report, 'EXT.PERMITTED')).toContain('keyUsage');
   });
 
-  it('rejects extensions requested via msCertExtensions', async () => {
-    const ext = new x509.BasicConstraintsExtension(true, 0, true);
+  it('rejects prohibited extensions requested via msCertExtensions', async () => {
+    const ext = new x509.KeyUsagesExtension(
+      x509.KeyUsageFlags.keyCertSign,
+      true,
+    );
     const pem = mutateCsr(await buildCsr({ extensions: [ext] }), (asn) => {
       asn.certificationRequestInfo.attributes[0]!.type =
         '1.3.6.1.4.1.311.2.1.14';
     });
     const report = await runOn(pem);
-    expect(messageOf(report, 'EXT.NONE')).toContain('basicConstraints');
+    expect(messageOf(report, 'EXT.PERMITTED')).toContain('keyUsage');
+  });
+
+  it('rejects basicConstraints smuggled via msCertExtensions rather than permitting it', async () => {
+    const pem = mutateCsr(await buildCsr(), (asn) => {
+      asn.certificationRequestInfo.attributes[0]!.type =
+        '1.3.6.1.4.1.311.2.1.14';
+    });
+    const report = await runOn(pem);
+    expectViolations(report, ['EXT.PERMITTED']);
+    expect(messageOf(report, 'EXT.PERMITTED')).toContain(
+      'standard extensionRequest',
+    );
   });
 });
 
 describe('validate-csr — malformed CSR fields are reported, never thrown', () => {
-  it('reports a malformed extensionRequest value as EXT.NONE', async () => {
+  it('reports a malformed extensionRequest value as EXT.PERMITTED', async () => {
     const pem = mutateCsr(await buildCsr(), (asn) => {
       asn.certificationRequestInfo.attributes.push(
         new Attribute({
@@ -464,8 +580,8 @@ describe('validate-csr — malformed CSR fields are reported, never thrown', () 
       );
     });
     const report = await runOn(pem);
-    expect(statusOf(report, 'EXT.NONE')).toBe('failed');
-    expect(messageOf(report, 'EXT.NONE')).toContain('malformed');
+    expect(statusOf(report, 'EXT.PERMITTED')).toBe('failed');
+    expect(messageOf(report, 'EXT.PERMITTED')).toContain('malformed');
   });
 
   it('reports an EC key without curve parameters as KEY.TYPE_EC', async () => {
@@ -493,7 +609,7 @@ describe('validate-csr — pipeline enforcement', () => {
     const report = await runOn(
       await buildCsr({
         subject: subjectWith({ c: WRONG_COUNTRIES[0] }),
-        extensions: [new x509.BasicConstraintsExtension(true, 0, true)],
+        extensions: [new x509.KeyUsagesExtension(x509.KeyUsageFlags.cRLSign)],
         namedCurve: 'P-256',
         hash: 'SHA-384',
       }),
@@ -501,7 +617,7 @@ describe('validate-csr — pipeline enforcement', () => {
     expect(report.passed).toBe(false);
     expect([...rulesOf(report)].sort()).toEqual([
       'DN.C',
-      'EXT.NONE',
+      'EXT.PERMITTED',
       'KEY.HASH',
     ]);
   });
@@ -516,9 +632,9 @@ describe('validate-csr — pipeline enforcement', () => {
 });
 
 describe('validate-csr — checks array and skipped state', () => {
-  it('marks all 10 rules as passed for a valid CSR', async () => {
+  it('marks all 11 rules as passed for a valid CSR', async () => {
     const report = await runOn(await buildCsr());
-    expect(report.checks).toHaveLength(10);
+    expect(report.checks).toHaveLength(11);
     for (const check of report.checks) {
       expect(check.status, `${check.rule} should be passed`).toBe('passed');
       expect(check.section).toBeTruthy();

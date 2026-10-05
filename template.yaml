@@ -348,6 +348,10 @@ Resources:
         skip:
           - id: CKV_AWS_115
             comment: Concurrency limit not required for this function
+          - id: CKV_AWS_173
+            comment: >-
+              Environment variable holds only the validated-bucket name, which
+              is not sensitive
     Properties:
       FunctionName: !Sub "${AWS::StackName}-csr-validator"
       CodeUri: ./

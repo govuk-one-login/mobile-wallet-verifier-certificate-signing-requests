@@ -13,13 +13,19 @@ export interface CsrOptions {
   tamperSignature?: boolean;
 }
 
+export const DEFAULT_SERIAL = '8b1f9c4e-2d44-4a76-9c1b-2f1a3b4c5d6e';
+
+export function defaultExtensions(): x509.Extension[] {
+  return [new x509.BasicConstraintsExtension(true, undefined, false)];
+}
+
 export async function buildCsr(options: CsrOptions = {}): Promise<string> {
   const {
     algorithm = 'ECDSA',
     namedCurve = 'P-256',
     hash = 'SHA-256',
     subject = defaultSubject(),
-    extensions = [],
+    extensions = defaultExtensions(),
     tamperSignature = false,
   } = options;
 
@@ -38,7 +44,10 @@ export async function buildCsr(options: CsrOptions = {}): Promise<string> {
 }
 
 export function defaultSubject(): string {
-  return `CN=DVS Acme Sub-CA, O=Acme Ltd, C=${REQUIRED_COUNTRY}`;
+  return (
+    `2.5.4.5=${DEFAULT_SERIAL}, CN=DVS Acme Sub-CA, ` +
+    `OU=DVS PKI Operations, O=Acme Ltd, C=${REQUIRED_COUNTRY}`
+  );
 }
 
 async function generateKeys(
