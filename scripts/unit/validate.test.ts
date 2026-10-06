@@ -136,7 +136,7 @@ describe('validatePem — full pipeline (real CSR)', () => {
   it('has every rule with status "passed"', async () => {
     const report = await validatePem(VALID_CSR_PEM, 'valid.pem');
 
-    expect(report.checks.length).toBe(11);
+    expect(report.checks).toHaveLength(11);
     for (const check of report.checks) {
       expect(
         check.status,
