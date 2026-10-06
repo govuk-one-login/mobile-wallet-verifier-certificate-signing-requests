@@ -45,13 +45,11 @@ const getLambdaNotificationConfig = (
   event: string,
 ): LambdaNotificationConfig => {
   const bucket = template.Resources[bucketName] as
-    | { Properties?: { NotificationConfiguration?: unknown } }
-    | undefined;
+    { Properties?: { NotificationConfiguration?: unknown } } | undefined;
   expect(bucket, `no bucket resource ${bucketName}`).toBeDefined();
 
   const notification = bucket!.Properties?.NotificationConfiguration as
-    | { LambdaConfigurations?: LambdaNotificationConfig[] }
-    | undefined;
+    { LambdaConfigurations?: LambdaNotificationConfig[] } | undefined;
   const lambdaConfigs = notification?.LambdaConfigurations;
   expect(
     lambdaConfigs,
