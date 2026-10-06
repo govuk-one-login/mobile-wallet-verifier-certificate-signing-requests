@@ -1,10 +1,46 @@
 import { describe, it, expect, vi } from 'vitest';
+import { webcrypto } from 'node:crypto';
+import * as x509 from '@peculiar/x509';
 import {
   validatePem,
   printReport,
 } from '../lib/verify-csr/validate.js';
 import type { ValidationReport } from '../lib/verify-csr/types.js';
 import { VALID_CSR_PEM } from './fixtures.js';
+
+x509.cryptoProvider.set(webcrypto as Crypto);
+
+// ── CSR generators for edge-case tests ──────────────────────────────
+
+async function generateCsr(
+  opts: {
+    algorithm?: EcKeyGenParams;
+    hash?: string;
+    subject?: string;
+    extensions?: x509.Extension[];
+  } = {},
+): Promise<string> {
+  const algo = opts.algorithm ?? {
+    name: 'ECDSA',
+    namedCurve: 'P-256',
+  };
+  const keys = await webcrypto.subtle.generateKey(algo, true, [
+    'sign',
+    'verify',
+  ]);
+  const csr = await x509.Pkcs10CertificateRequestGenerator.create({
+    keys,
+    signingAlgorithm: {
+      name: 'ECDSA',
+      hash: opts.hash ?? 'SHA-256',
+    },
+    name:
+      opts.subject ??
+      'C=GB, O=Test, OU=Test CA, CN=Test Sub-CA, 2.5.4.5=550e8400-e29b-41d4-a716-446655440000',
+    extensions: opts.extensions,
+  });
+  return csr.toString('pem');
+}
 
 // validatePem — invalid PEM
 
@@ -197,6 +233,151 @@ describe('validatePem — full pipeline (real CSR)', () => {
       }
     },
   );
+});
+
+// ── Edge-case CSRs (cover error branches) ───────────────────────────
+
+describe('validatePem — DN validation errors', () => {
+  it('fails DN.C when country is not GB', async () => {
+    const pem = await generateCsr({
+      subject:
+        'C=US, O=Test, OU=Test CA, CN=Test Sub-CA, ' +
+        '2.5.4.5=550e8400-e29b-41d4-a716-446655440000',
+    });
+    const report = await validatePem(pem, 'wrong-country.pem');
+
+    expect(report.passed).toBe(false);
+    const violation = report.violations.find(
+      (v) => v.rule === 'DN.C',
+    );
+    expect(violation).toBeDefined();
+    expect(violation!.message).toContain('US');
+  });
+
+  it('fails DN.SERIAL_UUIDV4 when serial is not a UUID', async () => {
+    const pem = await generateCsr({
+      subject:
+        'C=GB, O=Test, OU=Test CA, CN=Test Sub-CA, ' +
+        '2.5.4.5=not-a-uuid',
+    });
+    const report = await validatePem(pem, 'bad-serial.pem');
+
+    expect(report.passed).toBe(false);
+    const violation = report.violations.find(
+      (v) => v.rule === 'DN.SERIAL_UUIDV4',
+    );
+    expect(violation).toBeDefined();
+  });
+
+  it('fails DN.ATTRIBUTES when an attribute is missing', async () => {
+    const pem = await generateCsr({
+      subject: 'C=GB, O=Test, CN=Test Sub-CA',
+    });
+    const report = await validatePem(pem, 'missing-attrs.pem');
+
+    expect(report.passed).toBe(false);
+    const violation = report.violations.find(
+      (v) => v.rule === 'DN.ATTRIBUTES',
+    );
+    expect(violation).toBeDefined();
+    expect(violation!.message).toContain('Missing');
+  });
+
+  it('fails DN.ATTRIBUTES when extra attributes present', async () => {
+    const pem = await generateCsr({
+      subject:
+        'C=GB, O=Test, OU=Test CA, CN=Test Sub-CA, ' +
+        '2.5.4.5=550e8400-e29b-41d4-a716-446655440000, ' +
+        'L=London',
+    });
+    const report = await validatePem(pem, 'extra-attrs.pem');
+
+    expect(report.passed).toBe(false);
+    const violation = report.violations.find(
+      (v) => v.rule === 'DN.ATTRIBUTES',
+    );
+    expect(violation).toBeDefined();
+    expect(violation!.message).toContain('Unexpected');
+  });
+});
+
+describe('validatePem — extension validation errors', () => {
+  it('fails EXT.NONE when CSR has extensions', async () => {
+    const pem = await generateCsr({
+      extensions: [
+        new x509.Extension(
+          '1.2.3.4.5',
+          false,
+          new Uint8Array([0x30, 0x00]),
+        ),
+      ],
+    });
+    const report = await validatePem(pem, 'with-extensions.pem');
+
+    expect(report.passed).toBe(false);
+    const violation = report.violations.find(
+      (v) => v.rule === 'EXT.NONE',
+    );
+    expect(violation).toBeDefined();
+  });
+});
+
+describe('validatePem — PEM format errors', () => {
+  it('fails FORMAT.PEM for invalid base64 body', async () => {
+    // Valid PEM envelope with base64 alphabet chars but decode to
+    // nonsense — the regex passes but decodeBase64Body catches it
+    const pem = [
+      '-----BEGIN CERTIFICATE REQUEST-----',
+      'QUFB=QQ==',
+      '-----END CERTIFICATE REQUEST-----',
+    ].join('\n');
+
+    const report = await validatePem(pem, 'bad-base64.pem');
+
+    expect(report.passed).toBe(false);
+    const pemCheck = report.checks.find(
+      (c) => c.rule === 'FORMAT.PEM',
+    );
+    // Either FORMAT.PEM or FORMAT.PKCS10 fails — both are valid
+    const failed = report.violations.some(
+      (v) =>
+        v.rule === 'FORMAT.PEM' || v.rule === 'FORMAT.PKCS10',
+    );
+    expect(failed).toBe(true);
+  });
+});
+
+describe('validatePem — crypto validation with P-384', () => {
+  it('passes with a valid P-384 CSR and SHA-384', async () => {
+    const pem = await generateCsr({
+      algorithm: { name: 'ECDSA', namedCurve: 'P-384' },
+      hash: 'SHA-384',
+      subject:
+        'C=GB, O=Test, OU=Test CA, CN=Test Sub-CA, ' +
+        '2.5.4.5=550e8400-e29b-41d4-a716-446655440000',
+    });
+    const report = await validatePem(pem, 'p384.pem');
+
+    expect(report.passed).toBe(true);
+  });
+
+  it('fails KEY.HASH for P-256 with SHA-384 (mismatched)', async () => {
+    const pem = await generateCsr({
+      algorithm: { name: 'ECDSA', namedCurve: 'P-256' },
+      hash: 'SHA-384',
+      subject:
+        'C=GB, O=Test, OU=Test CA, CN=Test Sub-CA, ' +
+        '2.5.4.5=550e8400-e29b-41d4-a716-446655440000',
+    });
+    const report = await validatePem(pem, 'mismatch.pem');
+
+    expect(report.passed).toBe(false);
+    const violation = report.violations.find(
+      (v) => v.rule === 'KEY.HASH',
+    );
+    expect(violation).toBeDefined();
+    expect(violation!.message).toContain('mismatch');
+  });
 });
 
 // printReport

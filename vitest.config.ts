@@ -59,6 +59,7 @@ export default defineConfig({
         'eslint.config.ts',
         'tests/**',
         'scripts/unit/**',
+        'scripts/lib/verify-csr/types.ts',
       ],
     },
   },
