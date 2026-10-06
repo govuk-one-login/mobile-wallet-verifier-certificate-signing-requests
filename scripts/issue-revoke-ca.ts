@@ -106,8 +106,8 @@ async function handleIssue(
   console.log(
     styleText(['bold', 'yellow'], '\nAction: ISSUE subordinate CA certificate'),
   );
-  console.log(`  CSR:      ${styleText('cyan', `s3://${bucket}/${csrKey}`)}`);
-  console.log(`  CA ARN:   ${styleText('dim', caArn)}`);
+  const csrUri = `s3://${bucket}/${csrKey}`;
+  console.log(`  CSR:      ${styleText('cyan', csrUri)}`);  console.log(`  CA ARN:   ${styleText('dim', caArn)}`);
   console.log(`  Expiry:   ${styleText('cyan', expiryInput)}`);
 
   if (!(await confirm('\nProceed with issuance?'))) abort('Aborted.');
