@@ -17,6 +17,7 @@ import {
 import { validatePem } from '../lib/verify-csr/validate.js';
 import { getIssuedCertsBucket } from '../lib/issue-revoke/config.js';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { VALID_CSR_PEM } from './fixtures.js';
 
 // Mocks
 
@@ -123,18 +124,6 @@ const ISSUED_CERT_ARN =
   'arn:aws:acm-pca:eu-west-2:123456789012:' +
   'certificate-authority/abc/certificate/def';
 const BUCKET = 'issued-certs-bucket';
-
-const VALID_CSR_PEM = [
-  '-----BEGIN CERTIFICATE REQUEST-----',
-  'MIIBRzCB7gIBADCBizELMAkGA1UEBhMCR0IxEjAQBgNVBAoMCUdyZWF0IERWUzEV',
-  'MBMGA1UECwwMR3JlYXQgRFZTIENBMSIwIAYDVQQDDBlHcmVhdCBEVlMgVmVyaWZp',
-  'ZXIgU3ViLUNBMS0wKwYDVQQFEyQ1NTBlODQwMC1lMjliLTQxZDQtYTcxNi00NDY2',
-  'NTU0NDAwMDAwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAASFm2lS+Q4G18nUR//d',
-  'K2XHoDPVkVmlqzSHExKW1pianYmB62beqBazp21MLhByv4dfvnL/Ucd1wzPz3Ad2',
-  'kQ1ToAAwCgYIKoZIzj0EAwIDSAAwRQIgUJpP8LHhSFXN+G0vMSvi8yfZJE1+jg+l',
-  'CMS/YHoDXq4CIQDGClORDVUFpVorVFSJ9k65BfLKjaPwy0GHlwkkc+tfpA==',
-  '-----END CERTIFICATE REQUEST-----',
-].join('\n');
 
 const FAKE_CERT_PEM =
   '-----BEGIN CERTIFICATE-----\nFAKECERT\n-----END CERTIFICATE-----';

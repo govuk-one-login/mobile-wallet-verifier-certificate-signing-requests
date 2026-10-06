@@ -4,6 +4,7 @@ import {
   printReport,
 } from '../lib/verify-csr/validate.js';
 import type { ValidationReport } from '../lib/verify-csr/types.js';
+import { VALID_CSR_PEM } from './fixtures.js';
 
 // validatePem — invalid PEM
 
@@ -86,18 +87,6 @@ describe('validatePem', () => {
 });
 
 // validatePem — full pipeline with real CSR
-
-const VALID_CSR_PEM = [
-  '-----BEGIN CERTIFICATE REQUEST-----',
-  'MIIBRzCB7gIBADCBizELMAkGA1UEBhMCR0IxEjAQBgNVBAoMCUdyZWF0IERWUzEV',
-  'MBMGA1UECwwMR3JlYXQgRFZTIENBMSIwIAYDVQQDDBlHcmVhdCBEVlMgVmVyaWZp',
-  'ZXIgU3ViLUNBMS0wKwYDVQQFEyQ1NTBlODQwMC1lMjliLTQxZDQtYTcxNi00NDY2',
-  'NTU0NDAwMDAwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAASFm2lS+Q4G18nUR//d',
-  'K2XHoDPVkVmlqzSHExKW1pianYmB62beqBazp21MLhByv4dfvnL/Ucd1wzPz3Ad2',
-  'kQ1ToAAwCgYIKoZIzj0EAwIDSAAwRQIgUJpP8LHhSFXN+G0vMSvi8yfZJE1+jg+l',
-  'CMS/YHoDXq4CIQDGClORDVUFpVorVFSJ9k65BfLKjaPwy0GHlwkkc+tfpA==',
-  '-----END CERTIFICATE REQUEST-----',
-].join('\n');
 
 describe('validatePem — full pipeline (real CSR)', () => {
   it('passes all checks with a valid P-256 CSR', async () => {

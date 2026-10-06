@@ -1,0 +1,16 @@
+/**
+ * Shared test fixtures for script unit tests.
+ */
+
+/** Valid P-256 CSR with C=GB, O=Great DVS, OU=Great DVS CA, CN=Great DVS Verifier Sub-CA */
+export const VALID_CSR_PEM = [
+  '-----BEGIN CERTIFICATE REQUEST-----',
+  'MIIBRzCB7gIBADCBizELMAkGA1UEBhMCR0IxEjAQBgNVBAoMCUdyZWF0IERWUzEV',
+  'MBMGA1UECwwMR3JlYXQgRFZTIENBMSIwIAYDVQQDDBlHcmVhdCBEVlMgVmVyaWZp',
+  'ZXIgU3ViLUNBMS0wKwYDVQQFEyQ1NTBlODQwMC1lMjliLTQxZDQtYTcxNi00NDY2',
+  'NTU0NDAwMDAwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAASFm2lS+Q4G18nUR//d',
+  'K2XHoDPVkVmlqzSHExKW1pianYmB62beqBazp21MLhByv4dfvnL/Ucd1wzPz3Ad2',
+  'kQ1ToAAwCgYIKoZIzj0EAwIDSAAwRQIgUJpP8LHhSFXN+G0vMSvi8yfZJE1+jg+l',
+  'CMS/YHoDXq4CIQDGClORDVUFpVorVFSJ9k65BfLKjaPwy0GHlwkkc+tfpA==',
+  '-----END CERTIFICATE REQUEST-----',
+].join('\n');
