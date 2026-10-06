@@ -10,10 +10,10 @@ const ALLOWED_PAIRINGS: Record<string, string> = {
  * Validates the cryptographic profile: EC key, allowed curve, ECDSA
  * signature algorithm, and matching hash strength.
  */
-export async function checkCryptoProfile(
+export function checkCryptoProfile(
   csr: Pkcs10CertificateRequest,
   reporter: Reporter,
-): Promise<void> {
+): void {
   reporter.markEvaluated('KEY.TYPE_EC');
   const algorithm = csr.publicKey.algorithm;
   if (algorithm.name !== 'ECDSA') {
