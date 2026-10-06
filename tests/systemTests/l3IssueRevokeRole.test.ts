@@ -101,6 +101,7 @@ afterAll(async () => {
       try {
         await cliS3.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
       } catch {
+        // Best-effort cleanup: ignore teardown failures
       }
     }
   }
