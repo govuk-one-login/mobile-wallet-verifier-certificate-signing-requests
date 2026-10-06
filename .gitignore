@@ -36,6 +36,7 @@ terraform/stacks/base-stacks/reference_templates/*
 *.temp
 .cache/
 /test-reports/
+coverage/
 
 
 # Mac
