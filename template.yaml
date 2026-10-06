@@ -32,7 +32,7 @@ Parameters:
     Type: String
     Default: vpc
 
-  IntCaBackendStackName:
+  DvsStackName:
     Description: |
       The stack name of the Int CA backend where certificates issued bucket is deployed
     Type: String
@@ -371,7 +371,7 @@ Resources:
                 Resource: !Sub
                   - "arn:aws:s3:::${BucketName}/issued/*"
                   - BucketName: !ImportValue
-                      Fn::Sub: "${IntCaBackendStackName}-IssuedCertsBucketName"
+                      Fn::Sub: "${DvsStackName}-IssuedCertsBucketName"
         - PolicyName: L3IssueRevokeOperatorS3ListCertsBucketCertPrefix
           PolicyDocument:
             Version: "2012-10-17"
@@ -382,7 +382,7 @@ Resources:
                 Resource: !Sub
                   - "arn:aws:s3:::${BucketName}"
                   - BucketName: !ImportValue
-                      Fn::Sub: "${IntCaBackendStackName}-IssuedCertsBucketName"
+                      Fn::Sub: "${DvsStackName}-IssuedCertsBucketName"
                 Condition:
                   StringLike:
                     s3:prefix: "issued/"
