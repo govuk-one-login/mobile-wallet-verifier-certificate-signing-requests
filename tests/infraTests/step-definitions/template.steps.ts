@@ -8,6 +8,7 @@ import {
   testRequiredSections,
   testEnvironmentParameter,
   testRequiredParameters,
+  ENVIRONMENT_VALUES,
 } from './shared-helpers/cfn-test-utils.js';
 
 const templateFeature = loadFeature(
@@ -42,10 +43,16 @@ defineFeature(templateFeature, (test) => {
 
     then('the template should have valid CloudFormation format', () => {
       expect(() => testTemplateStructure(template)).not.toThrow();
+      expect(template.AWSTemplateFormatVersion).toBe('2010-09-09');
+      expect(template.Transform).toBe('AWS::Serverless-2016-10-31');
     });
 
     and('the template should have required sections including Globals', () => {
       expect(() => testRequiredSections(template, true)).not.toThrow();
+      expect(template.Parameters).toBeDefined();
+      expect(template.Resources).toBeDefined();
+      expect(template.Outputs).toBeDefined();
+      expect(template.Globals).toBeDefined();
     });
   });
 
@@ -56,6 +63,12 @@ defineFeature(templateFeature, (test) => {
       'the template should have Environment parameter with allowed values',
       () => {
         expect(() => testEnvironmentParameter(template)).not.toThrow();
+        const envParam = template.Parameters.Environment as Record<
+          string,
+          unknown
+        >;
+        expect(envParam.Type).toBe('String');
+        expect(envParam.AllowedValues).toEqual(ENVIRONMENT_VALUES);
       },
     );
 

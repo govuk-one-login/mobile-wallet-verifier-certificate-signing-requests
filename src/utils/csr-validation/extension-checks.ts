@@ -90,24 +90,43 @@ function readRequestedExtensions(rawCsr: Uint8Array): {
   let basicConstraintsViaStandardRequest = false;
   for (const attr of csrAsn.certificationRequestInfo.attributes) {
     if (!EXTENSION_ATTRIBUTE_OIDS.has(attr.type)) continue;
+    const isStandardRequest = attr.type === STANDARD_EXTENSION_REQUEST_OID;
     for (const value of attr.values) {
-      try {
-        const extensions = AsnConvert.parse(value, Extensions);
-        for (const ext of extensions) {
-          oids.push(ext.extnID);
-          if (
-            ext.extnID === BASIC_CONSTRAINTS_OID &&
-            attr.type === STANDARD_EXTENSION_REQUEST_OID
-          ) {
-            basicConstraintsViaStandardRequest = true;
-          }
-        }
-      } catch {
+      const parsed = parseExtensionValue(value, isStandardRequest);
+      if (parsed.malformed) {
         malformed++;
+        continue;
+      }
+      oids.push(...parsed.oids);
+      if (parsed.basicConstraintsViaStandardRequest) {
+        basicConstraintsViaStandardRequest = true;
       }
     }
   }
   return { oids, malformed, basicConstraintsViaStandardRequest };
+}
+
+function parseExtensionValue(
+  value: ArrayBuffer,
+  isStandardRequest: boolean,
+): {
+  oids: string[];
+  malformed: boolean;
+  basicConstraintsViaStandardRequest: boolean;
+} {
+  try {
+    const extensions = AsnConvert.parse(value, Extensions);
+    const oids = extensions.map((ext) => ext.extnID);
+    const basicConstraintsViaStandardRequest =
+      isStandardRequest && oids.includes(BASIC_CONSTRAINTS_OID);
+    return { oids, malformed: false, basicConstraintsViaStandardRequest };
+  } catch {
+    return {
+      oids: [],
+      malformed: true,
+      basicConstraintsViaStandardRequest: false,
+    };
+  }
 }
 
 function validateBasicConstraints(
