@@ -114,7 +114,7 @@ async function runChecks(
   const csr = parseCsr(der, reporter);
   if (!csr) return undefined;
   await checkSignature(csr, reporter);
-  await checkCryptoProfile(csr, reporter);
+  checkCryptoProfile(csr, reporter);
   const subjectDn = checkSubjectDn(der, reporter);
   const extensions = checkNoExtensions(csr, reporter);
   return { subjectDn, extensions };
