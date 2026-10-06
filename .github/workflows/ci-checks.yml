@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "src/**"
+      - "scripts/**"
       - "template.yaml"
       - ".github/workflows/**"
     types: [opened, reopened, ready_for_review, synchronize, converted_to_draft]
