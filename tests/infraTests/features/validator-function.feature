@@ -21,4 +21,5 @@ Feature: CsrValidatorFunction Infrastructure
 
   Scenario: Received bucket triggers the validator function on object creation
     Then the "CsrReceivedBucket" bucket should notify the "CsrValidatorFunction" alias on "s3:ObjectCreated:*"
+    And the "CsrReceivedBucket" notification for "s3:ObjectCreated:*" should filter on prefix "incoming/"
     And S3 should be permitted to invoke the "CsrValidatorFunction" alias from the "csr-received" bucket

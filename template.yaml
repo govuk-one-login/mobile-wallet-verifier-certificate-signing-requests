@@ -190,6 +190,11 @@ Resources:
         LambdaConfigurations:
           - Event: s3:ObjectCreated:*
             Function: !Ref CsrValidatorFunction.Alias
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: incoming/
       LoggingConfiguration:
         DestinationBucketName: !Sub "di-s3-access-logs-${AWS::AccountId}-${AWS::Region}"
         LogFilePrefix: "s3-access-logs/"

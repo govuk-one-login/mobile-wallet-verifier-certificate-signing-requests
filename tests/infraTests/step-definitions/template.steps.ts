@@ -29,6 +29,40 @@ const l3OperatorRolesFeature = loadFeature(
 
 let template: CloudFormationTemplate;
 
+interface S3KeyFilterRule {
+  Name: string;
+  Value: string;
+}
+
+interface LambdaNotificationConfig {
+  Event: string;
+  Function: unknown;
+  Filter?: { S3Key?: { Rules?: S3KeyFilterRule[] } };
+}
+
+const getLambdaNotificationConfig = (
+  bucketName: string,
+  event: string,
+): LambdaNotificationConfig => {
+  const bucket = template.Resources[bucketName] as
+    | { Properties?: { NotificationConfiguration?: unknown } }
+    | undefined;
+  expect(bucket, `no bucket resource ${bucketName}`).toBeDefined();
+
+  const notification = bucket!.Properties?.NotificationConfiguration as
+    | { LambdaConfigurations?: LambdaNotificationConfig[] }
+    | undefined;
+  const lambdaConfigs = notification?.LambdaConfigurations;
+  expect(
+    lambdaConfigs,
+    `no LambdaConfigurations on ${bucketName}`,
+  ).toBeDefined();
+
+  const config = lambdaConfigs!.find((entry) => entry.Event === event);
+  expect(config, `no notification for event ${event}`).toBeDefined();
+  return config!;
+};
+
 const loadTemplate = (given: (s: string, fn: () => void) => void) => {
   given('the CloudFormation template is loaded', () => {
     template = loadCloudFormationTemplate(
@@ -370,19 +404,21 @@ defineFeature(validatorFunctionFeature, (test) => {
     then(
       /^the "([^"]+)" bucket should notify the "([^"]+)" alias on "([^"]+)"$/,
       (bucketName: string, functionName: string, event: string) => {
-        const bucket = template.Resources[bucketName] as Record<
-          string,
-          unknown
-        >;
-        const notification = (bucket.Properties as Record<string, unknown>)
-          .NotificationConfiguration as Record<string, unknown>;
-        const lambdaConfigs = notification.LambdaConfigurations as Record<
-          string,
-          unknown
-        >[];
-        const config = lambdaConfigs.find((entry) => entry.Event === event);
-        expect(config, `no notification for event ${event}`).toBeDefined();
-        expect(config!.Function).toEqual({ Ref: `${functionName}.Alias` });
+        const config = getLambdaNotificationConfig(bucketName, event);
+        expect(config.Function).toEqual({ Ref: `${functionName}.Alias` });
+      },
+    );
+
+    and(
+      /^the "([^"]+)" notification for "([^"]+)" should filter on prefix "([^"]+)"$/,
+      (bucketName: string, event: string, prefix: string) => {
+        const config = getLambdaNotificationConfig(bucketName, event);
+        const rules = config.Filter?.S3Key?.Rules;
+        expect(
+          rules,
+          `no S3Key filter rules on ${bucketName} notification for ${event}`,
+        ).toBeDefined();
+        expect(rules).toContainEqual({ Name: 'prefix', Value: prefix });
       },
     );
 
