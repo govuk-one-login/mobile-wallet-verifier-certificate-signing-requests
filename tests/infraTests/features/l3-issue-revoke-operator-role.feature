@@ -14,13 +14,13 @@ Feature: L3IssueRevokeOperatorRole Infrastructure
       | kms:Decrypt |
 
   Scenario: IAM role has correct S3 policies
-    Then the "L3IssueRevokeOperatorRole" role should have policy "L3EnableDisableOperatorS3ListReceivedAndValidatedBucket" with actions:
+    Then the "L3IssueRevokeOperatorRole" role should have policy "L3IssueRevokeOperatorS3ListReceivedAndValidatedBucket" with actions:
       | action       |
       | s3:ListBucket |
-    And the "L3IssueRevokeOperatorRole" role should have policy "L3EnableDisableOperatorS3PutIntoCertsBucket" with actions:
+    And the "L3IssueRevokeOperatorRole" role should have policy "L3IssueRevokeOperatorS3PutIntoCertsBucket" with actions:
       | action       |
       | s3:PutObject  |
-    And the "L3IssueRevokeOperatorRole" role should have policy "L3EnableDisableOperatorS3ListCertsBucketCertPrefix" with actions:
+    And the "L3IssueRevokeOperatorRole" role should have policy "L3IssueRevokeOperatorS3ListCertsBucketCertPrefix" with actions:
       | action       |
       | s3:ListBucket |
 

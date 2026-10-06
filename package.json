@@ -6,7 +6,8 @@
   "scripts": {
     "postinstall": "husky || true",
     "build": "node build.mjs",
-    "test": "./node_modules/.bin/vitest run",
+    "test": "./node_modules/.bin/vitest run --project infra",
+    "test:system": "./node_modules/.bin/vitest run --project system",
     "typecheck": "./node_modules/.bin/tsc --noEmit",
     "lint": "./node_modules/.bin/eslint .",
     "format": "./node_modules/.bin/prettier --write '**/*.{json,md,ts}'",
@@ -28,6 +29,7 @@
     "node": ">=22.0.0 <23.0.0"
   },
   "devDependencies": {
+    "@aws-sdk/client-sts": "3.1144.0",
     "@cucumber/cucumber": "13.2.1",
     "@eslint/js": "9.39.2",
     "@types/aws-lambda": "8.10.164",
