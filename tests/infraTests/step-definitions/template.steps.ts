@@ -77,6 +77,9 @@ defineFeature(templateFeature, (test) => {
       (table: { parameter: string }[]) => {
         const params = table.map((row) => row.parameter);
         expect(() => testRequiredParameters(template, params)).not.toThrow();
+        for (const param of params) {
+          expect(template.Parameters[param], `${param} missing`).toBeDefined();
+        }
       },
     );
 
