@@ -2,10 +2,10 @@ import {
   Config,
   getRequiredEnvironmentVariables,
   MissingEnvVarError,
-} from '../../../utils/environment/environment.ts';
-import { Result } from '../../../utils/result/result.ts';
-import { logger } from '../../../utils/logging/logger.ts';
-import { LogMessage } from '../../../utils/logging/log-message.ts';
+} from '../../utils/environment/environment.ts';
+import { Result } from '../../utils/result/result.ts';
+import { logger } from '../../utils/logging/logger.ts';
+import { LogMessage } from '../../utils/logging/log-message.ts';
 
 const REQUIRED_ENVIRONMENT_VARIABLES = ['CSR_VALIDATED_BUCKET'] as const;
 

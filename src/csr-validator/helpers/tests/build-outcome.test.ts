@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { buildOutcome } from '../build-outcome.ts';
 import type { CsrSource } from '../parse-s3-record.ts';
-import type { ValidationReport } from '../../../../utils/csr-validation/types.ts';
+import type { ValidationReport } from '../../../utils/csr-validation/types.ts';
 
 const source: CsrSource = {
   bucket: 'mock-csr-received-bucket',

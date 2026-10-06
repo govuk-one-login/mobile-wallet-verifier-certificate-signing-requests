@@ -5,9 +5,9 @@ import {
   logger,
   removeS3SourceFromLogger,
   setupLogger,
-} from '../../utils/logging/logger.ts';
-import { LogMessage } from '../../utils/logging/log-message.ts';
-import { validateCsrText } from '../../utils/csr-validation/validate-csr.ts';
+} from '../utils/logging/logger.ts';
+import { LogMessage } from '../utils/logging/log-message.ts';
+import { validateCsrText } from '../utils/csr-validation/validate-csr.ts';
 import {
   CsrValidatorDependencies,
   runtimeDependencies,

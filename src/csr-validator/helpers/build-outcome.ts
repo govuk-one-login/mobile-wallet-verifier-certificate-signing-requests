@@ -1,9 +1,9 @@
-import { formatSubjectDn } from '../../../utils/csr-validation/format-subject-dn.ts';
+import { formatSubjectDn } from '../../utils/csr-validation/format-subject-dn.ts';
 import type {
   RuleResult,
   ValidationReport,
   Violation,
-} from '../../../utils/csr-validation/types.ts';
+} from '../../utils/csr-validation/types.ts';
 import type { CsrSource } from './parse-s3-record.ts';
 
 const VALIDATED_PREFIX = 'validated';

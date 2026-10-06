@@ -1,10 +1,10 @@
-import { Result } from '../../utils/result/result.ts';
+import { Result } from '../utils/result/result.ts';
 import {
   getS3Object,
   GetS3ObjectInput,
   putS3Object,
   PutS3ObjectInput,
-} from '../../adapters/aws/s3.ts';
+} from '../adapters/aws/s3.ts';
 
 export type CsrValidatorDependencies = {
   env: NodeJS.ProcessEnv;

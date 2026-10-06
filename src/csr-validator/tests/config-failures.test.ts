@@ -10,7 +10,7 @@ import {
   spyOnConsole,
   toBytes,
 } from './utils/builders.ts';
-import '../../../utils/test/matchers.ts';
+import '../../utils/test/matchers.ts';
 
 describe('Handler - Config failures', () => {
   let context: Context;

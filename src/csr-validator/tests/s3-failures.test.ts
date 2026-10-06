@@ -2,12 +2,12 @@ import type { Context } from 'aws-lambda';
 import { describe, it, beforeEach, afterEach, expect, vi } from 'vitest';
 import { handlerConstructor } from '../handler.ts';
 import type { CsrValidatorDependencies } from '../handler-dependencies.ts';
-import { sha256Hex } from '../../../utils/csr-validation/fingerprint.ts';
+import { sha256Hex } from '../../utils/csr-validation/fingerprint.ts';
 import {
   buildCsr,
   derOf,
-} from '../../../utils/csr-validation/tests/utils/builders.ts';
-import { emptyFailure, emptySuccess } from '../../../utils/result/result.ts';
+} from '../../utils/csr-validation/tests/utils/builders.ts';
+import { emptyFailure, emptySuccess } from '../../utils/result/result.ts';
 import {
   buildLambdaContext,
   buildS3Event,

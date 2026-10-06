@@ -1,12 +1,12 @@
 import path from 'node:path';
 import type { S3EventRecord } from 'aws-lambda';
-import { logger } from '../../../utils/logging/logger.ts';
-import { LogMessage } from '../../../utils/logging/log-message.ts';
+import { logger } from '../../utils/logging/logger.ts';
+import { LogMessage } from '../../utils/logging/log-message.ts';
 import {
   errorResult,
   Result,
   successResult,
-} from '../../../utils/result/result.ts';
+} from '../../utils/result/result.ts';
 
 export type CsrSource = {
   bucket: string;

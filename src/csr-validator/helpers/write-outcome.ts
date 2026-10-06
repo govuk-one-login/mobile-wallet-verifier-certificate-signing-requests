@@ -2,7 +2,7 @@ import {
   emptySuccess,
   errorResult,
   Result,
-} from '../../../utils/result/result.ts';
+} from '../../utils/result/result.ts';
 import type { CsrValidatorDependencies } from '../handler-dependencies.ts';
 import type { ValidationOutcome } from './build-outcome.ts';
 

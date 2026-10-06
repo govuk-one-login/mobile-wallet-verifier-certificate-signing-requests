@@ -2,8 +2,8 @@ import type { Context } from 'aws-lambda';
 import { describe, it, beforeEach, afterEach, expect, vi } from 'vitest';
 import { handlerConstructor } from '../handler.ts';
 import type { CsrValidatorDependencies } from '../handler-dependencies.ts';
-import { logger } from '../../../utils/logging/logger.ts';
-import { buildCsr } from '../../../utils/csr-validation/tests/utils/builders.ts';
+import { logger } from '../../utils/logging/logger.ts';
+import { buildCsr } from '../../utils/csr-validation/tests/utils/builders.ts';
 import {
   buildLambdaContext,
   buildS3Event,
@@ -14,7 +14,7 @@ import {
   toBytes,
   VERSION_ID,
 } from './utils/builders.ts';
-import '../../../utils/test/matchers.ts';
+import '../../utils/test/matchers.ts';
 
 describe('Handler - per invocation logging setup', () => {
   let context: Context;

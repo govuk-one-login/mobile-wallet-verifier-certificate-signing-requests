@@ -5,9 +5,9 @@ import { join, parse } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { loadCloudFormationTemplate } from '../../../../tests/infraTests/step-definitions/shared-helpers/cfn-test-utils.ts';
+import { loadCloudFormationTemplate } from '../../../tests/infraTests/step-definitions/shared-helpers/cfn-test-utils.ts';
 
-const REPOSITORY_ROOT = fileURLToPath(new URL('../../../../', import.meta.url));
+const REPOSITORY_ROOT = fileURLToPath(new URL('../../../', import.meta.url));
 
 type SamBuildProperties = {
   EntryPoints: string[];

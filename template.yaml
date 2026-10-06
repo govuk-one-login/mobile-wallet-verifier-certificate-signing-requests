@@ -473,7 +473,7 @@ Resources:
         Target: es2022
         Sourcemap: false
         EntryPoints:
-          - src/lambdas/csr-validator/handler.ts
+          - src/csr-validator/handler.ts
       checkov:
         skip:
           - id: CKV_AWS_115

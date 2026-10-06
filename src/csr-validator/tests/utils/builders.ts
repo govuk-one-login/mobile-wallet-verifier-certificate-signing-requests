@@ -3,7 +3,7 @@ import { expect, vi, type MockInstance } from 'vitest';
 import {
   emptySuccess,
   successResult,
-} from '../../../../utils/result/result.ts';
+} from '../../../utils/result/result.ts';
 import type { CsrValidatorDependencies } from '../../handler-dependencies.ts';
 
 export const SOURCE_BUCKET = 'mock-csr-received-bucket';

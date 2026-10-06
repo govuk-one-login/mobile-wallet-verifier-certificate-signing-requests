@@ -2,8 +2,8 @@ import type { Context } from 'aws-lambda';
 import { describe, it, beforeEach, afterEach, expect, vi } from 'vitest';
 import { handlerConstructor } from '../handler.ts';
 import type { CsrValidatorDependencies } from '../handler-dependencies.ts';
-import { RULE_DEFINITIONS } from '../../../utils/csr-validation/validate-csr.ts';
-import { buildCsr } from '../../../utils/csr-validation/tests/utils/builders.ts';
+import { RULE_DEFINITIONS } from '../../utils/csr-validation/validate-csr.ts';
+import { buildCsr } from '../../utils/csr-validation/tests/utils/builders.ts';
 import {
   buildLambdaContext,
   buildS3Event,
