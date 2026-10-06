@@ -118,7 +118,7 @@ export async function listCsrFiles(
     }
   }
 
-  return keys.sort();
+  return keys.sort((a, b) => a.localeCompare(b));
 }
 
 // Pre-signed URLs
