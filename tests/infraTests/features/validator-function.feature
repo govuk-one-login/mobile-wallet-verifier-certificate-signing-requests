@@ -14,6 +14,7 @@ Feature: CsrValidatorFunction Infrastructure
 
   Scenario: Function role can read received CSRs and write validated CSRs
     Then the "CsrValidatorFunctionRole" role should allow "s3:GetObject" on the "csr-received" bucket objects
+    And the "CsrValidatorFunctionRole" role should allow "s3:GetObjectVersion" on the "csr-received" bucket objects
     And the "CsrValidatorFunctionRole" role should allow "s3:PutObject" on the "csr-validated" bucket objects
     And the "CsrValidatorFunctionRole" role should allow "kms:Decrypt" on key "CsrReceivedBucketKmsKey"
     And the "CsrValidatorFunctionRole" role should allow "kms:GenerateDataKey" on key "CsrValidatedBucketKmsKey"

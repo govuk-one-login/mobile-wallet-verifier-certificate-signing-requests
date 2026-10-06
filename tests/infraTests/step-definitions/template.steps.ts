@@ -355,6 +355,7 @@ defineFeature(validatorFunctionFeature, (test) => {
 
     then(s3Step, expectS3Statement);
     and(s3Step, expectS3Statement);
+    and(s3Step, expectS3Statement);
     and(kmsStep, expectKmsStatement);
     and(kmsStep, expectKmsStatement);
   });
