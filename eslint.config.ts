@@ -12,8 +12,16 @@ export default [
       'coverage/**/*',
       '.prettierrc.cjs',
       'dist/**/*',
-      'build.mjs',
     ],
+  },
+  {
+    files: ['**/*.mjs'],
+    languageOptions: {
+      globals: {
+        console: 'readonly',
+        process: 'readonly',
+      },
+    },
   },
   {
     rules: {

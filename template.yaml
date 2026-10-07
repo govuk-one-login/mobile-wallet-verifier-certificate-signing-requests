@@ -32,7 +32,7 @@ Parameters:
     Type: String
     Default: vpc
 
-  IntCaBackendStackName:
+  DvsStackName:
     Description: |
       The stack name of the Int CA backend where certificates issued bucket is deployed
     Type: String
@@ -169,6 +169,8 @@ Resources:
     Type: AWS::S3::Bucket
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
+    DependsOn:
+      - CsrValidatorFunctionS3InvokePermission
     Properties:
       BucketName: !Sub "${AWS::AccountId}-${AWS::StackName}-csr-received"
       PublicAccessBlockConfiguration:
@@ -184,6 +186,15 @@ Resources:
             BucketKeyEnabled: true
       VersioningConfiguration:
         Status: Enabled
+      NotificationConfiguration:
+        LambdaConfigurations:
+          - Event: s3:ObjectCreated:*
+            Function: !Ref CsrValidatorFunction.Alias
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: incoming/
       LoggingConfiguration:
         DestinationBucketName: !Sub "di-s3-access-logs-${AWS::AccountId}-${AWS::Region}"
         LogFilePrefix: "s3-access-logs/"
@@ -345,7 +356,7 @@ Resources:
                   - kms:Decrypt
                 Resource:
                   - !GetAtt CsrValidatedBucketKmsKey.Arn
-        - PolicyName: L3EnableDisableOperatorS3ListReceivedAndValidatedBucket
+        - PolicyName: L3IssueRevokeOperatorS3ListReceivedAndValidatedBucket
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
@@ -355,7 +366,7 @@ Resources:
                 Resource:
                   - !Sub "arn:aws:s3:::${CsrReceivedBucket}"
                   - !Sub "arn:aws:s3:::${CsrValidatedBucket}"
-        - PolicyName: L3EnableDisableOperatorS3PutIntoCertsBucket
+        - PolicyName: L3IssueRevokeOperatorS3PutIntoCertsBucket
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
@@ -365,8 +376,8 @@ Resources:
                 Resource: !Sub
                   - "arn:aws:s3:::${BucketName}/issued/*"
                   - BucketName: !ImportValue
-                      Fn::Sub: "${IntCaBackendStackName}-IssuedCertsBucketName"
-        - PolicyName: L3EnableDisableOperatorS3ListCertsBucketCertPrefix
+                      Fn::Sub: "${DvsStackName}-IssuedCertsBucketName"
+        - PolicyName: L3IssueRevokeOperatorS3ListCertsBucketCertPrefix
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
@@ -376,7 +387,7 @@ Resources:
                 Resource: !Sub
                   - "arn:aws:s3:::${BucketName}"
                   - BucketName: !ImportValue
-                      Fn::Sub: "${IntCaBackendStackName}-IssuedCertsBucketName"
+                      Fn::Sub: "${DvsStackName}-IssuedCertsBucketName"
                 Condition:
                   StringLike:
                     s3:prefix: "issued/"
@@ -432,6 +443,29 @@ Resources:
             Action: sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+      Policies:
+        - PolicyName: CsrValidatorS3Access
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                Resource: !Sub "arn:aws:s3:::${AWS::AccountId}-${AWS::StackName}-csr-received/*"
+              - Effect: Allow
+                Action: s3:PutObject
+                Resource: !Sub "arn:aws:s3:::${AWS::AccountId}-${AWS::StackName}-csr-validated/*"
+        - PolicyName: CsrValidatorKmsAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: kms:Decrypt
+                Resource: !GetAtt CsrReceivedBucketKmsKey.Arn
+              - Effect: Allow
+                Action: kms:GenerateDataKey
+                Resource: !GetAtt CsrValidatedBucketKmsKey.Arn
       PermissionsBoundary: !If
         - UsePermissionsBoundary
         - !Ref PermissionsBoundary
@@ -451,15 +485,26 @@ Resources:
         skip:
           - id: CKV_AWS_115
             comment: Concurrency limit not required for this function
+          - id: CKV_AWS_173
+            comment: >-
+              Environment variable holds only the validated-bucket name, which
+              is not sensitive
     Properties:
       FunctionName: !Sub "${AWS::StackName}-csr-validator"
       CodeUri: ./
       Handler: handler.handler
+      Timeout: 30
+      MemorySize: 512
       CodeSigningConfigArn: !If
         - UseCodeSigning
         - !Ref CodeSigningConfigArn
         - !Ref AWS::NoValue
       Role: !GetAtt CsrValidatorFunctionRole.Arn
+      LoggingConfig:
+        LogGroup: !Ref CsrValidatorFunctionLogGroup
+      Environment:
+        Variables:
+          CSR_VALIDATED_BUCKET: !Ref CsrValidatedBucket
       VpcConfig:
         SecurityGroupIds:
           - Fn::ImportValue: !Sub ${VpcStackName}-AWSServicesEndpointSecurityGroupId
@@ -468,8 +513,20 @@ Resources:
           - Fn::ImportValue: !Sub ${VpcStackName}-PrivateSubnetIdB
           - Fn::ImportValue: !Sub ${VpcStackName}-PrivateSubnetIdC
 
+  CsrValidatorFunctionS3InvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref CsrValidatorFunction.Alias
+      Action: lambda:InvokeFunction
+      Principal: s3.amazonaws.com
+      SourceAccount: !Ref AWS::AccountId
+      SourceArn: !Sub "arn:aws:s3:::${AWS::AccountId}-${AWS::StackName}-csr-received"
 
 Outputs:
+  CsrReceivedBucketKmsKeyArn:
+    Description: ARN of the KMS key used for CsrReceivedBucket encryption
+    Value: !GetAtt CsrReceivedBucketKmsKey.Arn
+
   CsrReceivedBucketName:
     Description: Name of the S3 bucket to store CSRs received from external DVS organisations
     Value: !Ref CsrReceivedBucket

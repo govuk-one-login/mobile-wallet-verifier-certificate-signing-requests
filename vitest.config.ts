@@ -39,6 +39,8 @@ export default defineConfig({
         'vitest.config.ts',
         'eslint.config.ts',
         'tests/**',
+        'src/**/tests/utils/**',
+        'src/utils/test/**',
       ],
     },
   },

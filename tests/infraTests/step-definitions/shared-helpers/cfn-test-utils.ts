@@ -21,15 +21,21 @@ export interface CloudFormationTemplate {
   Conditions?: Record<string, unknown>;
 }
 
+const LOAD_ONLY = () => false;
+
 // Handle CloudFormation intrinsic functions that can appear in different contexts
 const createCfnTags = (tag: string, fnName: string) => [
-  defineScalarTag(tag, { resolve: (data: string) => ({ [fnName]: data }) }),
+  defineScalarTag(tag, {
+    resolve: (data: string) => ({ [fnName]: data }),
+    identify: LOAD_ONLY,
+  }),
   defineSequenceTag(tag, {
     create: () => [] as unknown[],
     addItem: (arr: unknown[], item: unknown) => {
       arr.push(item);
     },
     finalize: (arr: unknown[]) => ({ [fnName]: arr }),
+    identify: LOAD_ONLY,
   }),
   defineMappingTag(tag, {
     create: () => ({}) as Record<string, unknown>,
@@ -41,6 +47,7 @@ const createCfnTags = (tag: string, fnName: string) => [
     keys: (obj: Record<string, unknown>) => Object.keys(obj),
     get: (obj: Record<string, unknown>, key: unknown) => obj[key as string],
     finalize: (obj: Record<string, unknown>) => ({ [fnName]: obj }),
+    identify: LOAD_ONLY,
   }),
 ];
 

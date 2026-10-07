@@ -5,35 +5,44 @@
   "type": "module",
   "scripts": {
     "postinstall": "husky || true",
-    "build": "mkdir -p dist && cp -f open-api-spec.yaml dist/ && node build.mjs",
-    "test": "npm run test:infra",
-    "test:infra": "./node_modules/.bin/vitest run --project infra",
+    "build": "node build.mjs",
+    "test": "./node_modules/.bin/vitest run --project infra",
     "test:system": "./node_modules/.bin/vitest run --project system",
-    "test:all": "./node_modules/.bin/vitest run",
+    "typecheck": "./node_modules/.bin/tsc --noEmit",
     "lint": "./node_modules/.bin/eslint .",
     "format": "./node_modules/.bin/prettier --write '**/*.{json,md,ts}'",
     "format:check": "./node_modules/.bin/prettier --check '**/*.{json,md,ts}'"
   },
   "license": "MIT",
   "dependencies": {
+    "@aws-lambda-powertools/logger": "2.35.0",
+    "@aws-sdk/client-s3": "3.1144.0",
+    "@peculiar/asn1-csr": "2.10.0",
+    "@peculiar/asn1-schema": "2.10.0",
+    "@peculiar/asn1-x509": "2.10.0",
+    "@peculiar/x509": "2.1.0",
+    "@smithy/node-http-handler": "4.12.1",
     "esbuild": "0.28.2",
-    "jiti": "2.7.0"
+    "reflect-metadata": "0.2.2"
   },
   "engines": {
     "node": ">=22.0.0 <23.0.0"
   },
   "devDependencies": {
-    "@aws-sdk/client-s3": "3.1142.0",
-    "@aws-sdk/client-sts": "3.1142.0",
+    "@aws-sdk/client-sts": "3.1144.0",
     "@cucumber/cucumber": "13.2.1",
     "@eslint/js": "9.39.2",
+    "@types/aws-lambda": "8.10.164",
     "@types/node": "22.20.1",
+    "@vitest/coverage-v8": "4.1.11",
+    "aws-sdk-client-mock": "4.1.0",
+    "aws-sdk-client-mock-vitest": "7.1.0",
     "eslint": "10.9.1",
     "husky": "9.1.7",
     "jest-cucumber": "4.5.0",
+    "jiti": "2.7.0",
     "js-yaml": "5.4.2",
     "prettier": "3.9.6",
-    "reflect-metadata": "0.2.2",
     "typescript": "6.0.3",
     "typescript-eslint": "8.68.0",
     "vitest": "4.1.11"

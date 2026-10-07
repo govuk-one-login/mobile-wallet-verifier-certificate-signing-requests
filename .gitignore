@@ -57,3 +57,7 @@ terraform/stacks/base-stacks/reference_templates/*
 
 .aws-sam/
 samconfig.toml
+
+
+# Test coverage output
+coverage/
