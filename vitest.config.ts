@@ -60,6 +60,8 @@ export default defineConfig({
         'tests/**',
         'scripts/unit/**',
         'scripts/lib/verify-csr/types.ts',
+        'src/**/tests/utils/**',
+        'src/utils/test/**',
       ],
     },
   },

@@ -58,3 +58,7 @@ coverage/
 
 .aws-sam/
 samconfig.toml
+
+
+# Test coverage output
+coverage/

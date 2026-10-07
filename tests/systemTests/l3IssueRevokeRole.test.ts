@@ -4,6 +4,7 @@ import {
   PutObjectCommand,
   DeleteObjectCommand,
   ListObjectsV2Command,
+  HeadBucketCommand,
 } from '@aws-sdk/client-s3';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 
@@ -32,7 +33,39 @@ const fixtures = {
 const cliS3 = new S3Client({ region: AWS_REGION });
 let l3IssueRevokeOperatorS3: S3Client;
 
+const assertBucketExists = async (
+  bucket: string,
+  hint: string,
+): Promise<void> => {
+  try {
+    await cliS3.send(new HeadBucketCommand({ Bucket: bucket }));
+  } catch (error) {
+    const name = (error as { name?: string }).name ?? 'Error';
+    if (name === 'NotFound' || name === 'NoSuchBucket') {
+      throw new Error(
+        `S3 bucket "${bucket}" does not exist. ${hint} ` +
+          `(authenticated against account ${AWS_ACCOUNT_ID}, region ${AWS_REGION}).`,
+      );
+    }
+    throw new Error(
+      `Could not verify S3 bucket "${bucket}" (${name}). ${hint} ` +
+        `Check your AWS credentials and that you are in the right account/region.`,
+    );
+  }
+};
+
 beforeAll(async () => {
+  await assertBucketExists(
+    issuedCertsBucket,
+    'Pass the resolved bucket name in ISSUED_CERTS_BUCKET_NAME, not the ' +
+      'CloudFormation export name. Resolve it with: aws cloudformation ' +
+      'list-exports --query "Exports[?Name==\'<DvsStackName>-IssuedCertsBucketName\'].Value" --output text',
+  );
+  await assertBucketExists(
+    csrValidatedBucket,
+    `Expected the ${STACK_NAME} CSR stack to be deployed in this account.`,
+  );
+
   const sts = new STSClient({ region: AWS_REGION });
   const { Credentials } = await sts.send(
     new AssumeRoleCommand({
@@ -65,7 +98,11 @@ beforeAll(async () => {
 afterAll(async () => {
   for (const [bucket, keys] of Object.entries(fixtures)) {
     for (const key of keys) {
-      await cliS3.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
+      try {
+        await cliS3.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
+      } catch {
+        // Best-effort cleanup: ignore teardown failures
+      }
     }
   }
 });
