@@ -62,4 +62,19 @@ export class LogMessage implements LogAttributes {
     'CSR_VALIDATOR_PUT_S3_OBJECT_SUCCESS',
     'Successfully put object to S3.',
   );
+
+  static readonly CSR_VALIDATOR_NOTIFY_ATTEMPT = new LogMessage(
+    'CSR_VALIDATOR_NOTIFY_ATTEMPT',
+    'Attempting to send the outcome notification.',
+  );
+
+  static readonly CSR_VALIDATOR_NOTIFY_FAILURE = new LogMessage(
+    'CSR_VALIDATOR_NOTIFY_FAILURE',
+    'Failed to send the outcome notification; validation outcome is unaffected.',
+  );
+
+  static readonly CSR_VALIDATOR_NOTIFY_SUCCESS = new LogMessage(
+    'CSR_VALIDATOR_NOTIFY_SUCCESS',
+    'Successfully sent the outcome notification.',
+  );
 }

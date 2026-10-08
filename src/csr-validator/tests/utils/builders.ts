@@ -5,6 +5,7 @@ import type { CsrValidatorDependencies } from '../../handler-dependencies.ts';
 
 export const SOURCE_BUCKET = 'mock-csr-received-bucket';
 export const VALIDATED_BUCKET = 'mock-csr-validated-bucket';
+export const SLACK_WEBHOOK_URL = 'https://hooks.slack.example/mock-webhook';
 export const VERSION_ID = 'mockVersionId';
 
 export type RecordOverrides = {
@@ -77,9 +78,13 @@ export const buildValidHandlerDependencies = (
   }
   getS3Object.mockResolvedValue(successResult(objects.at(-1)));
   return {
-    env: { CSR_VALIDATED_BUCKET: VALIDATED_BUCKET },
+    env: {
+      CSR_VALIDATED_BUCKET: VALIDATED_BUCKET,
+      SLACK_WEBHOOK_URL: SLACK_WEBHOOK_URL,
+    },
     getS3Object,
     putS3Object: vi.fn().mockResolvedValue(emptySuccess()),
+    postSlackMessage: vi.fn().mockResolvedValue(emptySuccess()),
   };
 };
 
@@ -92,6 +97,16 @@ export type PutCall = {
 
 export const putCallsOf = (dependencies: CsrValidatorDependencies): PutCall[] =>
   vi.mocked(dependencies.putS3Object).mock.calls.map(([input]) => input);
+
+export type PostCall = {
+  webhookUrl: string;
+  message: string;
+};
+
+export const postCallsOf = (
+  dependencies: CsrValidatorDependencies,
+): PostCall[] =>
+  vi.mocked(dependencies.postSlackMessage).mock.calls.map(([input]) => input);
 
 type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'log';
 

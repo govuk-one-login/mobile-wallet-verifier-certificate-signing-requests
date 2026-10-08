@@ -15,6 +15,7 @@ import {
 import { CsrValidatorConfig, getCsrValidatorConfig } from './helpers/config.ts';
 import { CsrSource, parseS3Record } from './helpers/parse-s3-record.ts';
 import { buildOutcome } from './helpers/build-outcome.ts';
+import { buildNotification } from './helpers/build-notification.ts';
 import { writeOutcome } from './helpers/write-outcome.ts';
 
 export const handlerConstructor = async (
@@ -70,15 +71,6 @@ const processRecord = async (
   );
   const outcome = buildOutcome(source, report);
 
-  await dependencies.notifySlack(
-    config.SLACK_WEBHOOK_URL,
-    [
-      `*Original:* ${source.key}`,
-      `*SHA-256:* ${outcome.resultRecord.sha256 ?? 'N/A'}`,
-      `*Status:* ${outcome.resultRecord.status === 'pass' ? '✅ pass' : '❌ fail'}`,
-    ].join('\n'),
-  );
-
   const writeResult = await writeOutcome(dependencies.putS3Object, {
     bucket: config.CSR_VALIDATED_BUCKET,
     outcome,
@@ -89,6 +81,14 @@ const processRecord = async (
   }
 
   logger.info(LogMessage.CSR_VALIDATOR_COMPLETED, outcome.logFields);
+
+  // Best-effort side channel: the outcome is already persisted above, so a
+  // failed or slow notification must never fail the record or trigger a retry.
+  // postSlackMessage swallows its own errors; we ignore the Result here.
+  await dependencies.postSlackMessage({
+    webhookUrl: config.SLACK_WEBHOOK_URL,
+    message: buildNotification(source, outcome),
+  });
 };
 
 const getSource = (record: S3EventRecord): CsrSource => {

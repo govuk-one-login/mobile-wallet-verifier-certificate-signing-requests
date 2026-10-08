@@ -7,8 +7,10 @@ import {
   buildS3Event,
   buildValidHandlerDependencies,
   ConsoleSpies,
+  SLACK_WEBHOOK_URL,
   spyOnConsole,
   toBytes,
+  VALIDATED_BUCKET,
 } from './utils/builders.ts';
 import '../../utils/test/matchers.ts';
 
@@ -30,9 +32,27 @@ describe('Handler - Config failures', () => {
   });
 
   describe.each([
-    { scenario: 'missing', env: {} },
-    { scenario: 'empty', env: { CSR_VALIDATED_BUCKET: '' } },
-  ])('Given CSR_VALIDATED_BUCKET is $scenario', ({ env }) => {
+    {
+      scenario: 'CSR_VALIDATED_BUCKET is missing',
+      env: { SLACK_WEBHOOK_URL },
+      missing: ['CSR_VALIDATED_BUCKET'],
+    },
+    {
+      scenario: 'CSR_VALIDATED_BUCKET is empty',
+      env: { CSR_VALIDATED_BUCKET: '', SLACK_WEBHOOK_URL },
+      missing: ['CSR_VALIDATED_BUCKET'],
+    },
+    {
+      scenario: 'SLACK_WEBHOOK_URL is missing',
+      env: { CSR_VALIDATED_BUCKET: VALIDATED_BUCKET },
+      missing: ['SLACK_WEBHOOK_URL'],
+    },
+    {
+      scenario: 'both required variables are missing',
+      env: {},
+      missing: ['CSR_VALIDATED_BUCKET', 'SLACK_WEBHOOK_URL'],
+    },
+  ])('Given $scenario', ({ env, missing }) => {
     beforeEach(async () => {
       dependencies.env = env;
       try {
@@ -42,25 +62,26 @@ describe('Handler - Config failures', () => {
       }
     });
 
-    it('logs INVALID_CONFIG', () => {
+    it('logs INVALID_CONFIG with the missing variables', () => {
       expect(consoleSpies.error).toHaveBeenCalledWithLogFields({
         messageCode: 'CSR_VALIDATOR_INVALID_CONFIG',
         data: {
-          missingEnvironmentVariables: ['CSR_VALIDATED_BUCKET'],
+          missingEnvironmentVariables: missing,
         },
       });
     });
 
-    it('throws an error', () => {
+    it('throws an error naming the missing variables', () => {
       expect(lambdaError).toBeDefined();
       expect(lambdaError!.message).toBe(
-        'Config validation failed: missing CSR_VALIDATED_BUCKET',
+        `Config validation failed: missing ${missing.join(', ')}`,
       );
     });
 
-    it('reads and writes nothing', () => {
+    it('reads, writes, and notifies nothing', () => {
       expect(dependencies.getS3Object).not.toHaveBeenCalled();
       expect(dependencies.putS3Object).not.toHaveBeenCalled();
+      expect(dependencies.postSlackMessage).not.toHaveBeenCalled();
     });
   });
 });
