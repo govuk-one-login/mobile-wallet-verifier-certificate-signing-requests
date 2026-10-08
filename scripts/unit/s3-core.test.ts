@@ -124,30 +124,44 @@ describe('verifyPresent', () => {
 // ── listCsrFiles ────────────────────────────────────────────────────
 
 describe('listCsrFiles', () => {
-  it('returns sorted .pem keys', async () => {
+  it('returns sorted .pem keys under validated/ prefix', async () => {
     s3.on(ListObjectsV2Command).resolves({
       Contents: [
-        { Key: 'beta.pem' },
-        { Key: 'alpha.pem' },
-        { Key: 'gamma.pem' },
+        { Key: 'validated/beta.pem' },
+        { Key: 'validated/alpha.pem' },
+        { Key: 'validated/gamma.pem' },
       ],
     });
 
     const result = await listCsrFiles(new S3Client({}), BUCKET);
-    expect(result).toEqual(['alpha.pem', 'beta.pem', 'gamma.pem']);
+    expect(result).toEqual([
+      'validated/alpha.pem',
+      'validated/beta.pem',
+      'validated/gamma.pem',
+    ]);
+  });
+
+  it('scopes listing to the validated/ prefix', async () => {
+    s3.on(ListObjectsV2Command).resolves({ Contents: [] });
+
+    await listCsrFiles(new S3Client({}), BUCKET);
+
+    const calls = s3.commandCalls(ListObjectsV2Command);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]!.args[0].input.Prefix).toBe('validated/');
   });
 
   it('ignores non-.pem files', async () => {
     s3.on(ListObjectsV2Command).resolves({
       Contents: [
-        { Key: 'csr.pem' },
-        { Key: 'readme.txt' },
-        { Key: 'data.json' },
+        { Key: 'validated/csr.pem' },
+        { Key: 'validated/readme.txt' },
+        { Key: 'validated/data.json' },
       ],
     });
 
     const result = await listCsrFiles(new S3Client({}), BUCKET);
-    expect(result).toEqual(['csr.pem']);
+    expect(result).toEqual(['validated/csr.pem']);
   });
 
   it('returns empty array for empty bucket', async () => {
