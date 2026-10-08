@@ -32,27 +32,113 @@ const outcomeWith = (
   },
 });
 
+type ChatbotPayload = {
+  version: string;
+  source: string;
+  content: { textType?: string; title?: string; description: string };
+};
+
+const payloadOf = (message: string): ChatbotPayload =>
+  JSON.parse(message) as ChatbotPayload;
+
 describe('buildNotification', () => {
+  describe('AWS Chatbot custom-notification schema', () => {
+    const { message } = buildNotification(
+      source,
+      outcomeWith({ status: 'pass', sha256: 'deadbeef' }),
+    );
+    const payload = payloadOf(message);
+
+    it('is valid JSON', () => {
+      expect(() => payloadOf(message)).not.toThrow();
+    });
+
+    it('declares the mandatory version and source Chatbot requires', () => {
+      expect(payload.version).toBe('1.0');
+      expect(payload.source).toBe('custom');
+    });
+
+    it('provides the mandatory content.description', () => {
+      expect(typeof payload.content.description).toBe('string');
+      expect(payload.content.description.length).toBeGreaterThan(0);
+    });
+
+    it('renders in the chat client markdown', () => {
+      expect(payload.content.textType).toBe('client-markdown');
+    });
+  });
+
+  describe('Given a topic ARN', () => {
+    const { message } = buildNotification(
+      source,
+      outcomeWith({ status: 'pass', sha256: 'abc' }),
+      'arn:aws:sns:eu-west-2:123456789012:alerting-warning',
+    );
+    const { title } = payloadOf(message).content;
+
+    it('includes the region and account from the ARN in the title', () => {
+      expect(title).toContain('eu-west-2');
+      expect(title).toContain('Account: 123456789012');
+    });
+  });
+
+  describe('Given no topic ARN', () => {
+    const { message } = buildNotification(
+      source,
+      outcomeWith({ status: 'pass', sha256: 'abc' }),
+    );
+    const { title } = payloadOf(message).content;
+
+    it('omits the region/account context without breaking the title', () => {
+      expect(title).toContain('CSR Validation Passed');
+      expect(title).not.toContain('Account:');
+    });
+  });
+
   describe('Given a passing outcome', () => {
     const { subject, message } = buildNotification(
       source,
       outcomeWith({ status: 'pass', sha256: 'deadbeef' }),
     );
+    const { description, title } = payloadOf(message).content;
 
     it('summarises pass and the source key in the subject', () => {
       expect(subject).toBe('CSR validation passed: incoming/org.pem');
     });
 
-    it('includes the original source key in the message', () => {
-      expect(message).toContain('Original: incoming/org.pem');
+    it('builds an icon-prefixed title in the house format', () => {
+      expect(title).toContain(':white_check_mark:');
+      expect(title).toContain('CSR Validation Passed');
     });
 
-    it('includes the SHA-256 fingerprint in the message', () => {
-      expect(message).toContain('SHA-256: deadbeef');
+    it('includes the original source key in the description', () => {
+      expect(description).toContain('*Original filename:* `incoming/org.pem`');
     });
 
-    it('includes the pass status in the message', () => {
-      expect(message).toContain('Status: pass');
+    it('includes the SHA-256 fingerprint in the description', () => {
+      expect(description).toContain('*SHA-256 filename:* deadbeef');
+    });
+
+    it('includes the pass status in the description', () => {
+      expect(description).toContain('*Status:* pass');
+    });
+
+    it('omits the runbook line when no runbook URL is configured', () => {
+      expect(description).not.toContain('*Runbook:*');
+    });
+  });
+
+  describe('Given a runbook URL', () => {
+    const { message } = buildNotification(
+      source,
+      outcomeWith({ status: 'pass', sha256: 'abc' }),
+      undefined,
+      'https://runbook.example/csr',
+    );
+    const { description } = payloadOf(message).content;
+
+    it('includes the runbook line in the description', () => {
+      expect(description).toContain('*Runbook:* https://runbook.example/csr');
     });
   });
 
@@ -61,13 +147,19 @@ describe('buildNotification', () => {
       source,
       outcomeWith({ status: 'fail', sha256: 'cafe' }),
     );
+    const { description, title } = payloadOf(message).content;
 
     it('summarises fail in the subject', () => {
       expect(subject).toBe('CSR validation failed: incoming/org.pem');
     });
 
-    it('includes the fail status in the message', () => {
-      expect(message).toContain('Status: fail');
+    it('builds an icon-prefixed fail title', () => {
+      expect(title).toContain(':x:');
+      expect(title).toContain('CSR Validation Failed');
+    });
+
+    it('includes the fail status in the description', () => {
+      expect(description).toContain('*Status:* fail');
     });
   });
 
@@ -78,7 +170,9 @@ describe('buildNotification', () => {
     );
 
     it('renders the SHA-256 as N/A rather than null', () => {
-      expect(message).toContain('SHA-256: N/A');
+      expect(payloadOf(message).content.description).toContain(
+        '*SHA-256 filename:* N/A',
+      );
     });
   });
 

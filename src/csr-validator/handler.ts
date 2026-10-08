@@ -96,7 +96,12 @@ const notify = async (
     return;
   }
 
-  const notification = buildNotification(source, outcome);
+  const notification = buildNotification(
+    source,
+    outcome,
+    config.NOTIFICATION_TOPIC_ARN,
+    config.NOTIFICATION_RUNBOOK_URL,
+  );
   await dependencies.publishMessage({
     topicArn: config.NOTIFICATION_TOPIC_ARN,
     subject: notification.subject,

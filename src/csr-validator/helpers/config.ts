@@ -13,6 +13,7 @@ export type CsrValidatorConfig = Config<
   (typeof REQUIRED_ENVIRONMENT_VARIABLES)[number]
 > & {
   NOTIFICATION_TOPIC_ARN?: string;
+  NOTIFICATION_RUNBOOK_URL?: string;
 };
 
 export function getCsrValidatorConfig(
@@ -32,5 +33,6 @@ export function getCsrValidatorConfig(
   return successResult({
     ...envVarsResult.value,
     NOTIFICATION_TOPIC_ARN: env.NOTIFICATION_TOPIC_ARN || undefined,
+    NOTIFICATION_RUNBOOK_URL: env.NOTIFICATION_RUNBOOK_URL || undefined,
   });
 }

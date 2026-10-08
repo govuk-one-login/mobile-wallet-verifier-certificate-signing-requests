@@ -11,24 +11,53 @@ const SNS_SUBJECT_MAX_LENGTH = 100;
 export const buildNotification = (
   source: CsrSource,
   outcome: ValidationOutcome,
+  topicArn?: string,
+  runbookUrl?: string,
 ): Notification => {
   const { status, sha256 } = outcome.resultRecord;
-  const label = status === 'pass' ? 'passed' : 'failed';
+  const passed = status === 'pass';
+  const label = passed ? 'passed' : 'failed';
+  const icon = passed ? ':white_check_mark:' : ':x:';
+  const context = describeContext(topicArn);
 
   const subject = truncate(
     `CSR validation ${label}: ${source.key}`,
     SNS_SUBJECT_MAX_LENGTH,
   );
 
-  const message = [
-    `CSR validation ${label}.`,
-    ``,
-    `Original: ${source.key}`,
-    `SHA-256: ${sha256 ?? 'N/A'}`,
-    `Status: ${status}`,
-  ].join('\n');
+  const title = `${icon} CSR Validation ${passed ? 'Passed' : 'Failed'}${context}`;
+  const descriptionLines = [
+    `*Original filename:* \`${source.key}\``,
+    `*SHA-256 filename:* ${sha256 ?? 'N/A'}`,
+    `*Status:* ${status}`,
+  ];
+  if (runbookUrl !== undefined && runbookUrl !== '') {
+    descriptionLines.push(`*Runbook:* ${runbookUrl}`);
+  }
+  const description = descriptionLines.join('\n');
+
+  const message = JSON.stringify({
+    version: '1.0',
+    source: 'custom',
+    content: {
+      textType: 'client-markdown',
+      title,
+      description,
+    },
+  });
 
   return { subject, message };
+};
+
+const describeContext = (topicArn?: string): string => {
+  if (topicArn === undefined) {
+    return '';
+  }
+  const parts = topicArn.split(':');
+  if (parts.length < 6 || parts[3] === '' || parts[4] === '') {
+    return '';
+  }
+  return ` | ${parts[3]} | Account: ${parts[4]}`;
 };
 
 const truncate = (value: string, maxLength: number): string =>

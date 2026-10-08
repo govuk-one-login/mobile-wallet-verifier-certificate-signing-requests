@@ -44,6 +44,13 @@ Parameters:
     Type: String
     Default: alerting
 
+  NotificationRunbookUrl:
+    Description: |
+      Runbook URL included in the Slack notification for CSR
+      validation outcome.
+    Type: String
+    Default: "https://govukverify.atlassian.net/wiki/x/yoO6pQE"
+
   LambdaDeploymentPreference:
     Description: |
       Specifies the configuration to enable gradual Lambda deployments. Value can be 'AllAtOnce', a default deployment config, or name of custom DeploymentConfig.
@@ -479,12 +486,6 @@ Resources:
               - Effect: Allow
                 Action: sns:Publish
                 Resource: !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:${AlertingStackName}-warning"
-              # The warning topic is encrypted with the alerting stack's CMK, so
-              # publishing requires kms:GenerateDataKey/Decrypt. That key's ARN
-              # is not exported by the alerting stack, so rather than couple to a
-              # new export we scope the grant with kms:ViaService: the role can
-              # only use a KMS key when the call is made by SNS on its behalf
-              # (i.e. the publish path), never directly.
               - Effect: Allow
                 Action:
                   - kms:Decrypt
@@ -533,6 +534,7 @@ Resources:
         Variables:
           CSR_VALIDATED_BUCKET: !Ref CsrValidatedBucket
           NOTIFICATION_TOPIC_ARN: !Sub "{{resolve:ssm:/${Environment}/Alerting/WarningTopicArn}}"
+          NOTIFICATION_RUNBOOK_URL: !Ref NotificationRunbookUrl
       VpcConfig:
         SecurityGroupIds:
           - Fn::ImportValue: !Sub ${VpcStackName}-AWSServicesEndpointSecurityGroupId

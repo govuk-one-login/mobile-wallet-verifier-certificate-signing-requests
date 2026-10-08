@@ -57,12 +57,23 @@ describe('Handler - Outcome notification', () => {
 
     it('publishes to the configured topic a pass message with source and sha256', () => {
       const [call] = publishCallsOf(dependencies);
+      const payload = JSON.parse(call!.message) as {
+        version: string;
+        source: string;
+        content: { description: string };
+      };
 
       expect(call!.topicArn).toBe(NOTIFICATION_TOPIC_ARN);
       expect(call!.subject).toBe('CSR validation passed: incoming/org.pem');
-      expect(call!.message).toContain('Original: incoming/org.pem');
-      expect(call!.message).toContain(`SHA-256: ${sha256}`);
-      expect(call!.message).toContain('Status: pass');
+      expect(payload.version).toBe('1.0');
+      expect(payload.source).toBe('custom');
+      expect(payload.content.description).toContain(
+        '*Original filename:* `incoming/org.pem`',
+      );
+      expect(payload.content.description).toContain(
+        `*SHA-256 filename:* ${sha256}`,
+      );
+      expect(payload.content.description).toContain('*Status:* pass');
     });
 
     it('publishes only after the outcome has been persisted', () => {
@@ -85,9 +96,12 @@ describe('Handler - Outcome notification', () => {
 
     it('publishes a fail message', () => {
       const [call] = publishCallsOf(dependencies);
+      const payload = JSON.parse(call!.message) as {
+        content: { description: string };
+      };
 
       expect(call!.subject).toBe('CSR validation failed: incoming/org.pem');
-      expect(call!.message).toContain('Status: fail');
+      expect(payload.content.description).toContain('*Status:* fail');
     });
   });
 
