@@ -111,12 +111,12 @@ describe('buildNotification', () => {
       expect(title).toContain('CSR Validation Passed');
     });
 
-    it('includes the original source key in the description', () => {
-      expect(description).toContain('*Original filename:* `incoming/org.pem`');
+    it('includes the original source key without the incoming/ prefix', () => {
+      expect(description).toContain('*Original filename:* `org.pem`');
     });
 
-    it('includes the SHA-256 fingerprint in the description', () => {
-      expect(description).toContain('*SHA-256 filename:* deadbeef');
+    it('shows the SHA-256 as the stored .pem object name', () => {
+      expect(description).toContain('*SHA-256 filename:* deadbeef.pem');
     });
 
     it('includes the pass status in the description', () => {

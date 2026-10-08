@@ -26,9 +26,12 @@ export const buildNotification = (
   );
 
   const title = `${icon} CSR Validation ${passed ? 'Passed' : 'Failed'}${context}`;
+  const originalFilename = stripIncomingPrefix(source.key);
+  const sha256Filename = sha256 ? `${sha256}.pem` : 'N/A';
+
   const descriptionLines = [
-    `*Original filename:* \`${source.key}\``,
-    `*SHA-256 filename:* ${sha256 ?? 'N/A'}`,
+    `*Original filename:* \`${originalFilename}\``,
+    `*SHA-256 filename:* ${sha256Filename}`,
     `*Status:* ${status}`,
   ];
   if (runbookUrl !== undefined && runbookUrl !== '') {
@@ -59,6 +62,11 @@ const describeContext = (topicArn?: string): string => {
   }
   return ` | ${parts[3]} | Account: ${parts[4]}`;
 };
+
+const INCOMING_PREFIX = 'incoming/';
+
+const stripIncomingPrefix = (key: string): string =>
+  key.startsWith(INCOMING_PREFIX) ? key.slice(INCOMING_PREFIX.length) : key;
 
 const truncate = (value: string, maxLength: number): string =>
   value.length <= maxLength ? value : `${value.slice(0, maxLength - 3)}...`;

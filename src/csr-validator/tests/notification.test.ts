@@ -68,10 +68,10 @@ describe('Handler - Outcome notification', () => {
       expect(payload.version).toBe('1.0');
       expect(payload.source).toBe('custom');
       expect(payload.content.description).toContain(
-        '*Original filename:* `incoming/org.pem`',
+        '*Original filename:* `org.pem`',
       );
       expect(payload.content.description).toContain(
-        `*SHA-256 filename:* ${sha256}`,
+        `*SHA-256 filename:* ${sha256}.pem`,
       );
       expect(payload.content.description).toContain('*Status:* pass');
     });
