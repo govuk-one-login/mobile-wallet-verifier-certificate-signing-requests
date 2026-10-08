@@ -17,11 +17,15 @@ import {
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { AWS_REGION, PRESIGN_EXPIRES_IN } from './constants.js';
+import { getOperatorCredentials } from './config.js';
 
 // Client factory
 
 export function createS3Client(): S3Client {
-  return new S3Client({ region: AWS_REGION });
+  return new S3Client({
+    region: AWS_REGION,
+    credentials: getOperatorCredentials(),
+  });
 }
 
 // Download (in-memory)
@@ -46,7 +50,8 @@ export async function download(
     return text;
   } catch (err) {
     if (err instanceof NoSuchKey || err instanceof NotFound) {
-      throw new Error( // NOSONAR - domain-specific message is intentional
+      throw new Error(
+        // NOSONAR - domain-specific message is intentional
         `Object not found: s3://${bucket}/${key}. ` +
           'Has the CSR been validated and placed in the bucket?',
       );

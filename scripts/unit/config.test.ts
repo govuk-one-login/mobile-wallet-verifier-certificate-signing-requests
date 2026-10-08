@@ -42,23 +42,21 @@ function stubCaStack(): void {
 }
 
 function stubCsrStack(): void {
-  cfn
-    .on(DescribeStacksCommand, { StackName: 'verifier-csr' })
-    .resolves({
-      Stacks: [
-        {
-          StackName: 'verifier-csr',
-          CreationTime: new Date(),
-          StackStatus: 'CREATE_COMPLETE',
-          Outputs: [
-            {
-              OutputKey: 'CsrValidatedBucketName',
-              OutputValue: VALIDATED_BUCKET,
-            },
-          ],
-        },
-      ],
-    });
+  cfn.on(DescribeStacksCommand, { StackName: 'verifier-csr' }).resolves({
+    Stacks: [
+      {
+        StackName: 'verifier-csr',
+        CreationTime: new Date(),
+        StackStatus: 'CREATE_COMPLETE',
+        Outputs: [
+          {
+            OutputKey: 'CsrValidatedBucketName',
+            OutputValue: VALIDATED_BUCKET,
+          },
+        ],
+      },
+    ],
+  });
 }
 
 beforeEach(() => {
@@ -87,9 +85,7 @@ describe('getCaArn', () => {
       ],
     });
 
-    await expect(getCaArn()).rejects.toThrow(
-      /DVSIntermediateCAArn.*not found/,
-    );
+    await expect(getCaArn()).rejects.toThrow(/DVSIntermediateCAArn.*not found/);
   });
 });
 
@@ -98,9 +94,7 @@ describe('getCaArn', () => {
 describe('getIssuedCertsBucket', () => {
   it('returns IssuedCertsBucketName from the CA stack', async () => {
     stubCaStack();
-    await expect(getIssuedCertsBucket()).resolves.toBe(
-      ISSUED_BUCKET,
-    );
+    await expect(getIssuedCertsBucket()).resolves.toBe(ISSUED_BUCKET);
   });
 
   it('throws when the output key is absent', async () => {
@@ -131,24 +125,20 @@ describe('getIssuedCertsBucket', () => {
 describe('getCsrValidatedBucket', () => {
   it('returns CsrValidatedBucketName from the CSR stack', async () => {
     stubCsrStack();
-    await expect(getCsrValidatedBucket()).resolves.toBe(
-      VALIDATED_BUCKET,
-    );
+    await expect(getCsrValidatedBucket()).resolves.toBe(VALIDATED_BUCKET);
   });
 
   it('throws when the output key is absent', async () => {
-    cfn
-      .on(DescribeStacksCommand, { StackName: 'verifier-csr' })
-      .resolves({
-        Stacks: [
-          {
-            StackName: 'verifier-csr',
-            CreationTime: new Date(),
-            StackStatus: 'CREATE_COMPLETE',
-            Outputs: [],
-          },
-        ],
-      });
+    cfn.on(DescribeStacksCommand, { StackName: 'verifier-csr' }).resolves({
+      Stacks: [
+        {
+          StackName: 'verifier-csr',
+          CreationTime: new Date(),
+          StackStatus: 'CREATE_COMPLETE',
+          Outputs: [],
+        },
+      ],
+    });
 
     await expect(getCsrValidatedBucket()).rejects.toThrow(
       /CsrValidatedBucketName.*not found/,

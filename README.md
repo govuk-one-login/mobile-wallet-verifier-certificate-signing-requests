@@ -9,9 +9,10 @@ An interactive CLI script for issuing and revoking subordinate CA certificates v
 ### Prerequisites
 
 - **Node.js 22** (see `.nvmrc`)
-- **AWS CLI** — logged into the target account with an approved role:
+- **AWS CLI** — logged into the target account with an approved SSO role:
   - `AWSReservedSSO_ApprovedMobWalletCAIssueRevoke_*`
   - `AWSReservedSSO_AdministratorAccessPermission_*`
+- **Deployed stacks** — the CSR stack (`verifier-csr`) and CA stack (`dvs-ca`) must be deployed to the target environment. The script assumes the `L3IssueRevokeOperatorRole` from the CSR stack for scoped-down S3/KMS permissions.
 - CSR must already be validated and present in the `csr-validated` S3 bucket
 
 ### Usage
@@ -24,9 +25,10 @@ npm run issue-revoke-ca
 The script will prompt you to:
 
 1. **Select action** — `issue` or `revoke`
-2. **Authenticate** — verifies your IAM role
+2. **Authenticate** — verifies your SSO role
 3. **Select environment** — `dev`, `build`, `integration`, or `production`
 4. **Configure stack names** (dev only) — CA and CSR CloudFormation stack names
+5. **Assume operator role** — assumes `L3IssueRevokeOperatorRole` for S3/KMS access
 
 #### Issuing a certificate
 
@@ -57,23 +59,23 @@ No files are written to the local filesystem at any point.
 
 The script resolves configuration from two CloudFormation stacks:
 
-| Stack | Default name | Outputs used |
-|-------|-------------|--------------|
-| CA stack | `dvs-ca` | `DVSIntermediateCAArn`, `IssuedCertsBucketName` |
-| CSR stack | `verifier-csr` | `CsrValidatedBucketName` |
+| Stack     | Default name   | Outputs used                                    |
+| --------- | -------------- | ----------------------------------------------- |
+| CA stack  | `dvs-ca`       | `DVSIntermediateCAArn`, `IssuedCertsBucketName` |
+| CSR stack | `verifier-csr` | `CsrValidatedBucketName`                        |
 
 In `dev`, both stack names can be overridden interactively.
 
 ## Commands
 
-| Operation | Command |
-|-----------|---------|
-| Issue / revoke certificate | `npm run issue-revoke-ca` |
-| Run tests | `npm test` |
-| Run all tests (incl. system) | `npm run test:all` |
-| Run script tests only | `npx vitest run --project script-unit` |
-| Lint | `npm run lint` |
-| Format check | `npm run format:check` |
+| Operation                    | Command                                |
+| ---------------------------- | -------------------------------------- |
+| Issue / revoke certificate   | `npm run issue-revoke-ca`              |
+| Run tests                    | `npm test`                             |
+| Run all tests (incl. system) | `npm run test:all`                     |
+| Run script tests only        | `npx vitest run --project script-unit` |
+| Lint                         | `npm run lint`                         |
+| Format check                 | `npm run format:check`                 |
 
 ## Testing
 

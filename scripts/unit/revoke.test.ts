@@ -25,9 +25,7 @@ beforeEach(() => {
 
 describe('validateSerialFormat', () => {
   it('accepts a valid colon-hex serial', () => {
-    expect(() =>
-      validateSerialFormat('aa:bb:cc:dd'),
-    ).not.toThrow();
+    expect(() => validateSerialFormat('aa:bb:cc:dd')).not.toThrow();
   });
 
   it('accepts a two-byte serial', () => {
@@ -104,15 +102,9 @@ describe('revokeCertificate', () => {
 
   it('throws before calling AWS when serial is invalid', async () => {
     await expect(
-      revokeCertificate(
-        CA_ARN,
-        'invalid',
-        RevocationReason.UNSPECIFIED,
-      ),
+      revokeCertificate(CA_ARN, 'invalid', RevocationReason.UNSPECIFIED),
     ).rejects.toThrow(/Invalid certificate serial/);
 
-    expect(
-      pca.commandCalls(RevokeCertificateCommand),
-    ).toHaveLength(0);
+    expect(pca.commandCalls(RevokeCertificateCommand)).toHaveLength(0);
   });
 });

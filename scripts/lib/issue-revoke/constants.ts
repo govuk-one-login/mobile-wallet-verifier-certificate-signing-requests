@@ -7,8 +7,9 @@ export const DEFAULT_CA_STACK_NAME = 'dvs-ca';
 export const STACK_OUTPUT_CA_ARN = 'DVSIntermediateCAArn';
 export const STACK_OUTPUT_ISSUED_CERTS_BUCKET = 'IssuedCertsBucketName';
 
-// CloudFormation output keys (CSR stack)
+// ── CloudFormation output keys (CSR stack) ───────────────────────────
 export const STACK_OUTPUT_CSR_VALIDATED_BUCKET = 'CsrValidatedBucketName';
+export const STACK_OUTPUT_OPERATOR_ROLE_ARN = 'L3IssueRevokeOperatorRoleArn';
 
 // ACM PCA
 export const SUBORDINATE_CA_TEMPLATE_ARN =

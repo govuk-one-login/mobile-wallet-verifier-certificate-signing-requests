@@ -15,6 +15,7 @@ import {
   getCsrValidatedBucket,
   setCaStackName,
   setCsrStackName,
+  assumeOperatorRole,
 } from './lib/issue-revoke/config.js';
 import { revokeCertificate, VALID_REASONS } from './lib/issue-revoke/revoke.js';
 import {
@@ -107,7 +108,8 @@ async function handleIssue(
     styleText(['bold', 'yellow'], '\nAction: ISSUE subordinate CA certificate'),
   );
   const csrUri = `s3://${bucket}/${csrKey}`;
-  console.log(`  CSR:      ${styleText('cyan', csrUri)}`);  console.log(`  CA ARN:   ${styleText('dim', caArn)}`);
+  console.log(`  CSR:      ${styleText('cyan', csrUri)}`);
+  console.log(`  CA ARN:   ${styleText('dim', caArn)}`);
   console.log(`  Expiry:   ${styleText('cyan', expiryInput)}`);
 
   if (!(await confirm('\nProceed with issuance?'))) abort('Aborted.');
@@ -258,6 +260,11 @@ async function main() {
 
   setCaStackName(caStackName);
   setCsrStackName(csrStackName);
+
+  // Assume the L3 operator role for S3/KMS permissions
+  console.log(styleText('dim', '\nAssuming operator role …'));
+  await assumeOperatorRole();
+  console.log(styleText('green', '✓ Assumed L3IssueRevokeOperatorRole'));
 
   // Resolve CA ARN
   const caArn = await getCaArn();

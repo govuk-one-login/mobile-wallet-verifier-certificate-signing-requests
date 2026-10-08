@@ -38,14 +38,8 @@ describe('download', () => {
       Body: fakeBody('-----BEGIN CERTIFICATE REQUEST-----\n') as never,
     });
 
-    const result = await download(
-      new S3Client({}),
-      BUCKET,
-      KEY,
-    );
-    expect(result).toBe(
-      '-----BEGIN CERTIFICATE REQUEST-----\n',
-    );
+    const result = await download(new S3Client({}), BUCKET, KEY);
+    expect(result).toBe('-----BEGIN CERTIFICATE REQUEST-----\n');
   });
 
   it('throws when body is empty', async () => {
@@ -53,9 +47,9 @@ describe('download', () => {
       Body: fakeBody('') as never,
     });
 
-    await expect(
-      download(new S3Client({}), BUCKET, KEY),
-    ).rejects.toThrow(/empty body/i);
+    await expect(download(new S3Client({}), BUCKET, KEY)).rejects.toThrow(
+      /empty body/i,
+    );
   });
 
   it('throws when body is undefined', async () => {
@@ -63,9 +57,9 @@ describe('download', () => {
       Body: undefined,
     });
 
-    await expect(
-      download(new S3Client({}), BUCKET, KEY),
-    ).rejects.toThrow(/empty body/i);
+    await expect(download(new S3Client({}), BUCKET, KEY)).rejects.toThrow(
+      /empty body/i,
+    );
   });
 
   it('throws a helpful message on NoSuchKey', async () => {
@@ -74,19 +68,17 @@ describe('download', () => {
     Object.assign(err, { $metadata: {}, Code: 'NoSuchKey' });
     s3.on(GetObjectCommand).rejects(err);
 
-    await expect(
-      download(new S3Client({}), BUCKET, KEY),
-    ).rejects.toThrow(/not found|NoSuchKey/i);
+    await expect(download(new S3Client({}), BUCKET, KEY)).rejects.toThrow(
+      /not found|NoSuchKey/i,
+    );
   });
 
   it('re-throws unrecognised errors', async () => {
-    s3.on(GetObjectCommand).rejects(
-      new Error('AccessDenied'),
-    );
+    s3.on(GetObjectCommand).rejects(new Error('AccessDenied'));
 
-    await expect(
-      download(new S3Client({}), BUCKET, KEY),
-    ).rejects.toThrow('AccessDenied');
+    await expect(download(new S3Client({}), BUCKET, KEY)).rejects.toThrow(
+      'AccessDenied',
+    );
   });
 });
 
@@ -123,9 +115,9 @@ describe('verifyPresent', () => {
   it('throws when HeadObject fails', async () => {
     s3.on(HeadObjectCommand).rejects(new Error('not found'));
 
-    await expect(
-      verifyPresent(new S3Client({}), BUCKET, KEY),
-    ).rejects.toThrow(/Verification failed/);
+    await expect(verifyPresent(new S3Client({}), BUCKET, KEY)).rejects.toThrow(
+      /Verification failed/,
+    );
   });
 });
 
@@ -142,11 +134,7 @@ describe('listCsrFiles', () => {
     });
 
     const result = await listCsrFiles(new S3Client({}), BUCKET);
-    expect(result).toEqual([
-      'alpha.pem',
-      'beta.pem',
-      'gamma.pem',
-    ]);
+    expect(result).toEqual(['alpha.pem', 'beta.pem', 'gamma.pem']);
   });
 
   it('ignores non-.pem files', async () => {

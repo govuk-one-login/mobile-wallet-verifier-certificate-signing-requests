@@ -1,9 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { mockClient } from 'aws-sdk-client-mock';
-import {
-  STSClient,
-  GetCallerIdentityCommand,
-} from '@aws-sdk/client-sts';
+import { STSClient, GetCallerIdentityCommand } from '@aws-sdk/client-sts';
 import { assertRole } from '../lib/issue-revoke/role-guard.js';
 
 const sts = mockClient(STSClient);
@@ -41,17 +38,13 @@ describe('assertRole', () => {
   });
 
   it('rejects when ARN is undefined', async () => {
-    sts
-      .on(GetCallerIdentityCommand)
-      .resolves({ Arn: undefined });
+    sts.on(GetCallerIdentityCommand).resolves({ Arn: undefined });
 
     await expect(assertRole()).rejects.toThrow(/Access denied/);
   });
 
   it('rejects when STS call fails', async () => {
-    sts
-      .on(GetCallerIdentityCommand)
-      .rejects(new Error('ExpiredToken'));
+    sts.on(GetCallerIdentityCommand).rejects(new Error('ExpiredToken'));
 
     await expect(assertRole()).rejects.toThrow('ExpiredToken');
   });

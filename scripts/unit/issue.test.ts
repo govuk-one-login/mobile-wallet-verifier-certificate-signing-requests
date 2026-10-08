@@ -28,12 +28,16 @@ vi.mock('../lib/verify-csr/validate.js', () => ({
 
 vi.mock('../lib/issue-revoke/config.js', () => ({
   getIssuedCertsBucket: vi.fn(),
+  getOperatorCredentials: vi.fn().mockReturnValue({
+    accessKeyId: 'AKIAIOSFODNN7EXAMPLE',
+    secretAccessKey: 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY',
+    sessionToken: 'FwoGZXIvYXdzEBYaDH',
+  }),
 }));
 
 vi.mock('@aws-sdk/client-acm-pca', async (importOriginal) => {
-  const actual = await importOriginal<
-    typeof import('@aws-sdk/client-acm-pca')
-  >();
+  const actual =
+    await importOriginal<typeof import('@aws-sdk/client-acm-pca')>();
   return {
     ...actual,
     waitUntilCertificateIssued: vi.fn().mockResolvedValue({}),
@@ -154,12 +158,8 @@ function setupHappyPath(): void {
   s3Mock.on(HeadObjectCommand).resolves({});
 
   vi.mocked(getSignedUrl)
-    .mockResolvedValueOnce(
-      'https://s3.presigned.example.com/cert.pem',
-    )
-    .mockResolvedValueOnce(
-      'https://s3.presigned.example.com/chain.pem',
-    );
+    .mockResolvedValueOnce('https://s3.presigned.example.com/cert.pem')
+    .mockResolvedValueOnce('https://s3.presigned.example.com/chain.pem');
 }
 
 // Setup
@@ -191,7 +191,7 @@ describe('toGeneralizedTime', () => {
   });
 });
 
-// issueCertificate 
+// issueCertificate
 
 describe('issueCertificate', () => {
   it('throws when CSR fails validation', async () => {
@@ -203,28 +203,16 @@ describe('issueCertificate', () => {
     });
 
     await expect(
-      issueCertificate(
-        CA_ARN,
-        'not-a-valid-pem',
-        CSR_FILENAME,
-        EXPIRY_DATE,
-      ),
+      issueCertificate(CA_ARN, 'not-a-valid-pem', CSR_FILENAME, EXPIRY_DATE),
     ).rejects.toThrow(/CSR failed validation/);
 
-    expect(
-      pcaMock.commandCalls(IssueCertificateCommand),
-    ).toHaveLength(0);
+    expect(pcaMock.commandCalls(IssueCertificateCommand)).toHaveLength(0);
   });
 
   it('calls IssueCertificateCommand with correct params', async () => {
     setupHappyPath();
 
-    await issueCertificate(
-      CA_ARN,
-      VALID_CSR_PEM,
-      CSR_FILENAME,
-      EXPIRY_DATE,
-    );
+    await issueCertificate(CA_ARN, VALID_CSR_PEM, CSR_FILENAME, EXPIRY_DATE);
 
     const calls = pcaMock.commandCalls(IssueCertificateCommand);
     expect(calls).toHaveLength(1);
@@ -252,12 +240,7 @@ describe('issueCertificate', () => {
   it('uploads cert and chain to S3 with correct keys', async () => {
     setupHappyPath();
 
-    await issueCertificate(
-      CA_ARN,
-      VALID_CSR_PEM,
-      CSR_FILENAME,
-      EXPIRY_DATE,
-    );
+    await issueCertificate(CA_ARN, VALID_CSR_PEM, CSR_FILENAME, EXPIRY_DATE);
 
     const putCalls = s3Mock.commandCalls(PutObjectCommand);
     expect(putCalls).toHaveLength(2);
@@ -293,9 +276,7 @@ describe('issueCertificate', () => {
     );
 
     expect(result.certificateArn).toBe(ISSUED_CERT_ARN);
-    expect(result.certificateSerial).toBe(
-      'aa:bb:cc:dd:11:22:33:44',
-    );
+    expect(result.certificateSerial).toBe('aa:bb:cc:dd:11:22:33:44');
     expect(result.certPresignedUrl).toBe(
       'https://s3.presigned.example.com/cert.pem',
     );
