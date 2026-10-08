@@ -50,11 +50,10 @@ export async function download(
     return text;
   } catch (err) {
     if (err instanceof NoSuchKey || err instanceof NotFound) {
-      throw new Error(
-        // NOSONAR - domain-specific message is intentional
+      (err as Error).message =
         `Object not found: s3://${bucket}/${key}. ` +
-          'Has the CSR been validated and placed in the bucket?',
-      );
+        'Has the CSR been validated and placed in the bucket?';
+      throw err;
     }
     throw err;
   }
