@@ -97,7 +97,7 @@ export async function validatePem(
 
   const der = decodePem(pemContent, reporter);
   if (!der) {
-    return finalise(label, reporter, undefined);
+    return finalise(label, reporter);
   }
 
   const metadata = await runChecks(der, reporter);
