@@ -70,6 +70,15 @@ const processRecord = async (
   );
   const outcome = buildOutcome(source, report);
 
+  await dependencies.notifySlack(
+    config.SLACK_WEBHOOK_URL,
+    [
+      `*Original:* ${source.key}`,
+      `*SHA-256:* ${outcome.resultRecord.sha256 ?? 'N/A'}`,
+      `*Status:* ${outcome.resultRecord.status === 'pass' ? '✅ pass' : '❌ fail'}`,
+    ].join('\n'),
+  );
+
   const writeResult = await writeOutcome(dependencies.putS3Object, {
     bucket: config.CSR_VALIDATED_BUCKET,
     outcome,

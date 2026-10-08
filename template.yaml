@@ -466,6 +466,13 @@ Resources:
               - Effect: Allow
                 Action: kms:GenerateDataKey
                 Resource: !GetAtt CsrValidatedBucketKmsKey.Arn
+        - PolicyName: CsrValidatorSecretsManagerAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: secretsmanager:GetSecretValue
+                Resource: !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${AWS::StackName}/${Environment}/slack-webhook-url*"
       PermissionsBoundary: !If
         - UsePermissionsBoundary
         - !Ref PermissionsBoundary
@@ -505,6 +512,7 @@ Resources:
       Environment:
         Variables:
           CSR_VALIDATED_BUCKET: !Ref CsrValidatedBucket
+          SLACK_WEBHOOK_URL: !Sub "{{resolve:secretsmanager:${AWS::StackName}/${Environment}/slack-webhook-url}}"
       VpcConfig:
         SecurityGroupIds:
           - Fn::ImportValue: !Sub ${VpcStackName}-AWSServicesEndpointSecurityGroupId

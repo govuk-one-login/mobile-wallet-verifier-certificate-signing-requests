@@ -7,7 +7,7 @@ import { Result } from '../../utils/result/result.ts';
 import { logger } from '../../utils/logging/logger.ts';
 import { LogMessage } from '../../utils/logging/log-message.ts';
 
-const REQUIRED_ENVIRONMENT_VARIABLES = ['CSR_VALIDATED_BUCKET'] as const;
+const REQUIRED_ENVIRONMENT_VARIABLES = ['CSR_VALIDATED_BUCKET', 'SLACK_WEBHOOK_URL'] as const;
 
 export type CsrValidatorConfig = Config<
   (typeof REQUIRED_ENVIRONMENT_VARIABLES)[number]
