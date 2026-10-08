@@ -23,7 +23,8 @@ import {
   GetCertificateCommand,
   waitUntilCertificateIssued,
 } from '@aws-sdk/client-acm-pca';
-import { validatePem, printReport } from '../verify-csr/validate.js';
+import { validateCsrText } from '../../../src/utils/csr-validation/validate-csr.js';
+import type { ValidationReport } from '../../../src/utils/csr-validation/types.js';
 import { getIssuedCertsBucket } from './config.js';
 import {
   createS3Client,
@@ -113,9 +114,9 @@ export async function issueCertificate(
   expiryDate: Date,
 ): Promise<IssueResult> {
   // 1. Validate CSR in-memory
-  const report = await validatePem(csrPem, csrFileName);
+  const report = await validateCsrText(csrPem);
   if (!report.passed) {
-    printReport(report);
+    printReport(report, csrFileName);
     throw new Error('CSR failed validation — issuance aborted.');
   }
 
@@ -212,4 +213,13 @@ export async function issueCertificate(
     certPresignedUrl,
     chainPresignedUrl,
   };
+}
+
+// Report printing
+
+function printReport(report: ValidationReport, label: string): void {
+  console.log(`✗ ${label}: ${report.violations.length} violation(s)`);
+  for (const v of report.violations) {
+    console.log(`  [${v.rule}] ${v.message}`);
+  }
 }

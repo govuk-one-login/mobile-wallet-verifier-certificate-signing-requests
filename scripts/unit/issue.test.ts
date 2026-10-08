@@ -14,16 +14,15 @@ import {
   issueCertificate,
   toGeneralizedTime,
 } from '../lib/issue-revoke/issue.js';
-import { validatePem } from '../lib/verify-csr/validate.js';
+import { validateCsrText } from '../../src/utils/csr-validation/validate-csr.js';
 import { getIssuedCertsBucket } from '../lib/issue-revoke/config.js';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { VALID_CSR_PEM } from './fixtures.js';
 
 // Mocks
 
-vi.mock('../lib/verify-csr/validate.js', () => ({
-  validatePem: vi.fn(),
-  printReport: vi.fn(),
+vi.mock('../../src/utils/csr-validation/validate-csr.js', () => ({
+  validateCsrText: vi.fn(),
 }));
 
 vi.mock('../lib/issue-revoke/config.js', () => ({
@@ -141,9 +140,8 @@ const FAKE_CHAIN_PEM =
 // Helpers
 
 function setupHappyPath(): void {
-  vi.mocked(validatePem).mockResolvedValue({
+  vi.mocked(validateCsrText).mockResolvedValue({
     passed: true,
-    file: CSR_FILENAME,
     violations: [],
     checks: [],
   });
@@ -171,7 +169,7 @@ function setupHappyPath(): void {
 beforeEach(() => {
   pcaMock.reset();
   s3Mock.reset();
-  vi.mocked(validatePem).mockReset();
+  vi.mocked(validateCsrText).mockReset();
   vi.mocked(getIssuedCertsBucket).mockReset();
   vi.mocked(getSignedUrl).mockReset();
 });
@@ -199,9 +197,8 @@ describe('toGeneralizedTime', () => {
 
 describe('issueCertificate', () => {
   it('throws when CSR fails validation', async () => {
-    vi.mocked(validatePem).mockResolvedValue({
+    vi.mocked(validateCsrText).mockResolvedValue({
       passed: false,
-      file: CSR_FILENAME,
       violations: [],
       checks: [],
     });

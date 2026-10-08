@@ -12,7 +12,7 @@ import {
   STACK_OUTPUT_OPERATOR_ROLE_ARN,
 } from './constants.js';
 
-// ── State ───────────────────────────────────────────────────────────
+// State
 
 let caStackName: string;
 let csrStackName: string;
@@ -39,7 +39,7 @@ export function getOperatorCredentials(): AwsCredentialIdentity {
   return operatorCredentials;
 }
 
-// ── Stack output resolution ─────────────────────────────────────────
+// Stack output resolution
 
 async function getStackOutput(stackName: string, key: string): Promise<string> {
   const cfn = new CloudFormationClient({ region: AWS_REGION });
@@ -53,7 +53,7 @@ async function getStackOutput(stackName: string, key: string): Promise<string> {
   return output.OutputValue;
 }
 
-// ── dvs-ca stack outputs ────────────────────────────────────────────
+// dvs-ca stack outputs
 
 export async function getCaArn(): Promise<string> {
   if (!caStackName) {
@@ -69,7 +69,7 @@ export async function getIssuedCertsBucket(): Promise<string> {
   return getStackOutput(caStackName, STACK_OUTPUT_ISSUED_CERTS_BUCKET);
 }
 
-// ── CSR stack outputs ───────────────────────────────────────────────
+// CSR stack outputs
 
 export async function getCsrValidatedBucket(): Promise<string> {
   if (!csrStackName) {
@@ -85,7 +85,7 @@ export async function getOperatorRoleArn(): Promise<string> {
   return getStackOutput(csrStackName, STACK_OUTPUT_OPERATOR_ROLE_ARN);
 }
 
-// ── Role assumption ─────────────────────────────────────────────────
+// Role assumption
 
 /**
  * Assumes the L3IssueRevokeOperatorRole and stores the temporary
