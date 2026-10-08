@@ -489,6 +489,8 @@ Resources:
         Minify: true
         Target: es2022
         Sourcemap: false
+        External:
+          - reflect-metadata
         EntryPoints:
           - src/csr-validator/handler.ts
       checkov:
