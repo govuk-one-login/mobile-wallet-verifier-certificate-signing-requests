@@ -5,23 +5,20 @@ import {
   putS3Object,
   PutS3ObjectInput,
 } from '../adapters/aws/s3.ts';
+import { postSlackMessage, PostSlackMessageInput } from '../adapters/slack.ts';
 
 export type CsrValidatorDependencies = {
   env: NodeJS.ProcessEnv;
   getS3Object: (input: GetS3ObjectInput) => Promise<Result<Uint8Array, void>>;
   putS3Object: (input: PutS3ObjectInput) => Promise<Result<void, void>>;
-  notifySlack: (webhookUrl: string, message: string) => Promise<void>;
+  postSlackMessage: (
+    input: PostSlackMessageInput,
+  ) => Promise<Result<void, void>>;
 };
 
 export const runtimeDependencies: CsrValidatorDependencies = {
   env: process.env,
   getS3Object,
   putS3Object,
-  notifySlack: async (webhookUrl, message) => {
-    await fetch(webhookUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: message }),
-    });
-  },
+  postSlackMessage,
 };

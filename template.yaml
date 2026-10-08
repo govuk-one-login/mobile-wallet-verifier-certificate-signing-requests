@@ -466,13 +466,6 @@ Resources:
               - Effect: Allow
                 Action: kms:GenerateDataKey
                 Resource: !GetAtt CsrValidatedBucketKmsKey.Arn
-        - PolicyName: CsrValidatorSecretsManagerAccess
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: Allow
-                Action: secretsmanager:GetSecretValue
-                Resource: !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${AWS::StackName}/${Environment}/slack-webhook-url*"
       PermissionsBoundary: !If
         - UsePermissionsBoundary
         - !Ref PermissionsBoundary
@@ -512,6 +505,9 @@ Resources:
       Environment:
         Variables:
           CSR_VALIDATED_BUCKET: !Ref CsrValidatedBucket
+          # Resolved by CloudFormation at deploy time, so the execution role
+          # needs no secretsmanager:GetSecretValue. Rotating the secret value
+          # requires a redeploy to re-resolve this reference.
           SLACK_WEBHOOK_URL: !Sub "{{resolve:secretsmanager:${AWS::StackName}/${Environment}/slack-webhook-url}}"
       VpcConfig:
         SecurityGroupIds:
