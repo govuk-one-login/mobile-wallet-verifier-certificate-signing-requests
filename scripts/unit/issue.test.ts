@@ -91,12 +91,16 @@ vi.mock('@peculiar/asn1-x509', () => {
     base = null;
     minimum = 0;
   }
-  class MockGeneralSubtrees {}
+  class MockGeneralSubtrees extends Array {}
   class MockNameConstraints {
     permittedSubtrees = null;
   }
-  class MockGeneralName {}
-  class MockName {}
+  class MockGeneralName {
+    directoryName = null;
+  }
+  class MockName {
+    value = null;
+  }
 
   return {
     GeneralSubtree: MockGeneralSubtree,

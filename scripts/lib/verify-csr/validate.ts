@@ -94,14 +94,13 @@ export async function validatePem(
   label: string,
 ): Promise<ValidationReport> {
   const reporter = new Reporter();
-  let metadata: CsrMetadata | undefined;
 
   const der = decodePem(pemContent, reporter);
   if (!der) {
-    return finalise(label, reporter, metadata);
+    return finalise(label, reporter, undefined);
   }
 
-  metadata = await runChecks(der, reporter);
+  const metadata = await runChecks(der, reporter);
   return finalise(label, reporter, metadata);
 }
 

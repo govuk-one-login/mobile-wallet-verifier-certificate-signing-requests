@@ -302,7 +302,6 @@ describe('validatePem — PEM format errors', () => {
     const report = await validatePem(pem, 'bad-base64.pem');
 
     expect(report.passed).toBe(false);
-    const pemCheck = report.checks.find((c) => c.rule === 'FORMAT.PEM');
     // Either FORMAT.PEM or FORMAT.PKCS10 fails — both are valid
     const failed = report.violations.some(
       (v) => v.rule === 'FORMAT.PEM' || v.rule === 'FORMAT.PKCS10',
