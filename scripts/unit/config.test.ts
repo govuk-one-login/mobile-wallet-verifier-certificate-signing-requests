@@ -4,20 +4,27 @@ import {
   CloudFormationClient,
   DescribeStacksCommand,
 } from '@aws-sdk/client-cloudformation';
+import { STSClient, AssumeRoleCommand } from '@aws-sdk/client-sts';
 import {
   setCaStackName,
   setCsrStackName,
   getCaArn,
   getIssuedCertsBucket,
   getCsrValidatedBucket,
+  getOperatorRoleArn,
+  assumeOperatorRole,
+  getOperatorCredentials,
 } from '../lib/issue-revoke/config.js';
 
 const cfn = mockClient(CloudFormationClient);
+const sts = mockClient(STSClient);
 
 const CA_ARN =
   'arn:aws:acm-pca:eu-west-2:123456789012:certificate-authority/abc';
 const ISSUED_BUCKET = 'org-dvs-ca-issued-certs-build';
 const VALIDATED_BUCKET = 'org-verifier-csr-validated-build';
+const OPERATOR_ROLE_ARN =
+  'arn:aws:iam::123456789012:role/verifier-csr-L3IssueRevokeOperatorRole';
 
 function stubCaStack(): void {
   cfn.on(DescribeStacksCommand, { StackName: 'dvs-ca' }).resolves({
@@ -53,6 +60,10 @@ function stubCsrStack(): void {
             OutputKey: 'CsrValidatedBucketName',
             OutputValue: VALIDATED_BUCKET,
           },
+          {
+            OutputKey: 'L3IssueRevokeOperatorRoleArn',
+            OutputValue: OPERATOR_ROLE_ARN,
+          },
         ],
       },
     ],
@@ -61,11 +72,12 @@ function stubCsrStack(): void {
 
 beforeEach(() => {
   cfn.reset();
+  sts.reset();
   setCaStackName('dvs-ca');
   setCsrStackName('verifier-csr');
 });
 
-// ── getCaArn ────────────────────────────────────────────────────────
+// getCaArn
 
 describe('getCaArn', () => {
   it('returns DVSIntermediateCAArn from the CA stack', async () => {
@@ -89,7 +101,7 @@ describe('getCaArn', () => {
   });
 });
 
-// ── getIssuedCertsBucket ────────────────────────────────────────────
+// getIssuedCertsBucket
 
 describe('getIssuedCertsBucket', () => {
   it('returns IssuedCertsBucketName from the CA stack', async () => {
@@ -120,7 +132,7 @@ describe('getIssuedCertsBucket', () => {
   });
 });
 
-// ── getCsrValidatedBucket ───────────────────────────────────────────
+// getCsrValidatedBucket
 
 describe('getCsrValidatedBucket', () => {
   it('returns CsrValidatedBucketName from the CSR stack', async () => {
@@ -152,5 +164,84 @@ describe('getCsrValidatedBucket', () => {
     const calls = cfn.commandCalls(DescribeStacksCommand);
     expect(calls).toHaveLength(1);
     expect(calls[0]!.args[0].input.StackName).toBe('verifier-csr');
+  });
+});
+
+// getOperatorRoleArn
+
+describe('getOperatorRoleArn', () => {
+  it('returns the operator role ARN from the CSR stack', async () => {
+    stubCsrStack();
+    await expect(getOperatorRoleArn()).resolves.toBe(OPERATOR_ROLE_ARN);
+  });
+
+  it('throws when the output key is absent', async () => {
+    cfn.on(DescribeStacksCommand, { StackName: 'verifier-csr' }).resolves({
+      Stacks: [
+        {
+          StackName: 'verifier-csr',
+          CreationTime: new Date(),
+          StackStatus: 'CREATE_COMPLETE',
+          Outputs: [],
+        },
+      ],
+    });
+
+    await expect(getOperatorRoleArn()).rejects.toThrow(
+      /L3IssueRevokeOperatorRoleArn.*not found/,
+    );
+  });
+});
+
+// assumeOperatorRole + getOperatorCredentials
+
+describe('assumeOperatorRole', () => {
+  it('assumes the role and stores credentials', async () => {
+    stubCsrStack();
+    sts.on(AssumeRoleCommand).resolves({
+      Credentials: {
+        AccessKeyId: 'AKID',
+        SecretAccessKey: 'SECRET',
+        SessionToken: 'TOKEN',
+        Expiration: new Date(),
+      },
+    });
+
+    await assumeOperatorRole();
+
+    const creds = getOperatorCredentials();
+    expect(creds.accessKeyId).toBe('AKID');
+    expect(creds.secretAccessKey).toBe('SECRET');
+    expect(creds.sessionToken).toBe('TOKEN');
+  });
+
+  it('calls AssumeRole with the correct role ARN', async () => {
+    stubCsrStack();
+    sts.on(AssumeRoleCommand).resolves({
+      Credentials: {
+        AccessKeyId: 'AKID',
+        SecretAccessKey: 'SECRET',
+        SessionToken: 'TOKEN',
+        Expiration: new Date(),
+      },
+    });
+
+    await assumeOperatorRole();
+
+    const calls = sts.commandCalls(AssumeRoleCommand);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]!.args[0].input.RoleArn).toBe(OPERATOR_ROLE_ARN);
+    expect(calls[0]!.args[0].input.RoleSessionName).toBe('issue-revoke-ca');
+  });
+
+  it('throws when STS returns no credentials', async () => {
+    stubCsrStack();
+    sts.on(AssumeRoleCommand).resolves({
+      Credentials: undefined,
+    });
+
+    await expect(assumeOperatorRole()).rejects.toThrow(
+      /no credentials returned/,
+    );
   });
 });
