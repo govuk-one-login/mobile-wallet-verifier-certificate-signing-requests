@@ -103,8 +103,8 @@ export async function verifyPresent(
 // List CSR files
 
 /**
- * Lists all `.pem` object keys in the csr-validated bucket.
- * Uses pagination to handle buckets with many objects.
+ * Lists all `.pem` object keys under the `validated/` prefix in the
+ * csr-validated bucket. Uses pagination to handle many objects.
  */
 export async function listCsrFiles(
   s3: S3Client,
@@ -112,7 +112,10 @@ export async function listCsrFiles(
 ): Promise<string[]> {
   const keys: string[] = [];
 
-  const paginator = paginateListObjectsV2({ client: s3 }, { Bucket: bucket });
+  const paginator = paginateListObjectsV2(
+    { client: s3 },
+    { Bucket: bucket, Prefix: 'validated/' },
+  );
 
   for await (const page of paginator) {
     for (const obj of page.Contents ?? []) {

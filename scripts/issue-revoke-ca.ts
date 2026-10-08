@@ -23,11 +23,7 @@ import {
   DEFAULT_CA_STACK_NAME,
   DATE_RE,
 } from './lib/issue-revoke/constants.js';
-import {
-  createS3Client,
-  download,
-  listCsrFiles,
-} from './lib/issue-revoke/s3-core.js';
+import { createS3Client, download } from './lib/issue-revoke/s3-core.js';
 
 // Utilities
 
@@ -63,33 +59,20 @@ async function handleIssue(
   prompt: ReturnType<typeof createInterface>,
   caArn: string,
 ): Promise<void> {
-  // 1. List validated CSR files from S3
+  // 1. Resolve the validated CSR bucket
   const bucket = await getCsrValidatedBucket();
   const s3 = createS3Client();
 
-  console.log(
-    styleText('dim', `\nFetching validated CSR files from s3://${bucket} …`),
-  );
-  const csrKeys = await listCsrFiles(s3, bucket);
+  // 2. Prompt for the CSR PEM filename
+  const csrFileName = (
+    await prompt.question(
+      styleText('bold', `CSR pem filename in s3://${bucket}/validated/: `),
+    )
+  ).trim();
+  if (!csrFileName) abort('CSR filename is required.');
+  if (!csrFileName.endsWith('.pem')) abort('CSR filename must end with .pem');
 
-  if (csrKeys.length === 0) {
-    abort(
-      'No validated CSR files found in the bucket. ' +
-        'Has the CSR been submitted and validated?',
-    );
-  }
-
-  // 2. Let operator pick a CSR
-  console.log(styleText('bold', '\nSelect CSR file:'));
-  csrKeys.forEach((key, i) =>
-    console.log(`  ${styleText('cyan', String(i + 1))}. ${key}`),
-  );
-  const csrIdx = pickIndex(
-    await prompt.question(styleText('bold', '\nEnter number: ')),
-    csrKeys.length,
-  );
-  const csrKey = csrKeys[csrIdx]!;
-  const csrFileName = csrKey.split('/').pop() ?? csrKey;
+  const csrKey = `validated/${csrFileName}`;
 
   // 3. Collect expiry date
   const expiryInput = (
