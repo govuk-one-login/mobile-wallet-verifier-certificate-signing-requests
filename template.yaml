@@ -184,6 +184,7 @@ Resources:
     UpdateReplacePolicy: Retain
     DependsOn:
       - CsrValidatorFunctionS3InvokePermission
+      - CsrValidatorFunctionAliaslive
     Properties:
       BucketName: !Sub "${AWS::AccountId}-${AWS::StackName}-csr-received"
       PublicAccessBlockConfiguration:
