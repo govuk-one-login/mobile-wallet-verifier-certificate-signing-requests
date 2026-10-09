@@ -14,7 +14,8 @@ import {
 } from './handler-dependencies.ts';
 import { CsrValidatorConfig, getCsrValidatorConfig } from './helpers/config.ts';
 import { CsrSource, parseS3Record } from './helpers/parse-s3-record.ts';
-import { buildOutcome } from './helpers/build-outcome.ts';
+import { buildOutcome, ValidationOutcome } from './helpers/build-outcome.ts';
+import { buildNotification } from './helpers/build-notification.ts';
 import { writeOutcome } from './helpers/write-outcome.ts';
 
 export const handlerConstructor = async (
@@ -80,6 +81,32 @@ const processRecord = async (
   }
 
   logger.info(LogMessage.CSR_VALIDATOR_COMPLETED, outcome.logFields);
+
+  await notify(dependencies, config, source, outcome);
+};
+
+const notify = async (
+  dependencies: CsrValidatorDependencies,
+  config: CsrValidatorConfig,
+  source: CsrSource,
+  outcome: ValidationOutcome,
+): Promise<void> => {
+  if (config.NOTIFICATION_TOPIC_ARN === undefined) {
+    logger.debug(LogMessage.CSR_VALIDATOR_NOTIFY_SKIPPED);
+    return;
+  }
+
+  const notification = buildNotification(
+    source,
+    outcome,
+    config.NOTIFICATION_TOPIC_ARN,
+    config.NOTIFICATION_RUNBOOK_URL,
+  );
+  await dependencies.publishMessage({
+    topicArn: config.NOTIFICATION_TOPIC_ARN,
+    subject: notification.subject,
+    message: notification.message,
+  });
 };
 
 const getSource = (record: S3EventRecord): CsrSource => {

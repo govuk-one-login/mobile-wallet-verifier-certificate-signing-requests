@@ -38,6 +38,19 @@ Parameters:
     Type: String
     Default: dvs-ca
 
+  AlertingStackName:
+    Description: |
+      The stack name of the shared alerting stack that owns the SNS topics
+    Type: String
+    Default: alerting
+
+  NotificationRunbookUrl:
+    Description: |
+      Runbook URL included in the Slack notification for CSR
+      validation outcome.
+    Type: String
+    Default: "https://govukverify.atlassian.net/wiki/spaces/DCMAW/pages/7075431370/CSR-Validation+Operator+Runbook"
+
   LambdaDeploymentPreference:
     Description: |
       Specifies the configuration to enable gradual Lambda deployments. Value can be 'AllAtOnce', a default deployment config, or name of custom DeploymentConfig.
@@ -476,6 +489,21 @@ Resources:
               - Effect: Allow
                 Action: kms:GenerateDataKey
                 Resource: !GetAtt CsrValidatedBucketKmsKey.Arn
+        - PolicyName: CsrValidatorNotificationAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: sns:Publish
+                Resource: !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:${AlertingStackName}-warning"
+              - Effect: Allow
+                Action:
+                  - kms:Decrypt
+                  - kms:GenerateDataKey
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    kms:ViaService: !Sub "sns.${AWS::Region}.amazonaws.com"
       PermissionsBoundary: !If
         - UsePermissionsBoundary
         - !Ref PermissionsBoundary
@@ -517,6 +545,8 @@ Resources:
       Environment:
         Variables:
           CSR_VALIDATED_BUCKET: !Ref CsrValidatedBucket
+          NOTIFICATION_TOPIC_ARN: !Sub "{{resolve:ssm:/${Environment}/Alerting/WarningTopicArn}}"
+          NOTIFICATION_RUNBOOK_URL: !Ref NotificationRunbookUrl
       VpcConfig:
         SecurityGroupIds:
           - Fn::ImportValue: !Sub ${VpcStackName}-AWSServicesEndpointSecurityGroupId
