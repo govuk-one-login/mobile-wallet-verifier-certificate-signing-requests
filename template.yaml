@@ -49,7 +49,7 @@ Parameters:
       Runbook URL included in the Slack notification for CSR
       validation outcome.
     Type: String
-    Default: "https://govukverify.atlassian.net/wiki/x/yoO6pQE"
+    Default: "https://govukverify.atlassian.net/wiki/spaces/DCMAW/pages/7075431370/CSR-Validation+Operator+Runbook"
 
   LambdaDeploymentPreference:
     Description: |
