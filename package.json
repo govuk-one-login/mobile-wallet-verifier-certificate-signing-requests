@@ -5,18 +5,24 @@
   "type": "module",
   "scripts": {
     "postinstall": "husky || true",
-    "build": "node build.mjs",
-    "test": "./node_modules/.bin/vitest run --project infra",
+    "build": "mkdir -p dist && cp -f open-api-spec.yaml dist/ && node build.mjs",
+    "test": "./node_modules/.bin/vitest run --project infra --project script-unit",
+    "test:infra": "./node_modules/.bin/vitest run --project infra",
     "test:system": "./node_modules/.bin/vitest run --project system",
     "typecheck": "./node_modules/.bin/tsc --noEmit",
     "lint": "./node_modules/.bin/eslint .",
     "format": "./node_modules/.bin/prettier --write '**/*.{json,md,ts}'",
-    "format:check": "./node_modules/.bin/prettier --check '**/*.{json,md,ts}'"
+    "format:check": "./node_modules/.bin/prettier --check '**/*.{json,md,ts}'",
+    "issue-revoke-ca": "tsx scripts/issue-revoke-ca.ts"
   },
   "license": "MIT",
   "dependencies": {
-    "@aws-lambda-powertools/logger": "2.35.0",
+    "@aws-sdk/client-acm-pca": "3.1146.0",
+    "@aws-sdk/client-cloudformation": "3.1146.0",
     "@aws-sdk/client-s3": "3.1146.0",
+    "@aws-sdk/client-sts": "3.1146.0",
+    "@aws-sdk/s3-request-presigner": "3.1146.0",
+    "@aws-lambda-powertools/logger": "2.35.0",
     "@aws-sdk/client-sns": "3.1146.0",
     "@peculiar/asn1-csr": "2.10.0",
     "@peculiar/asn1-schema": "2.10.0",
@@ -44,6 +50,8 @@
     "jiti": "2.7.0",
     "js-yaml": "5.4.3",
     "prettier": "3.9.9",
+    "reflect-metadata": "0.2.2",
+    "tsx": "4.23.15",
     "typescript": "6.0.3",
     "typescript-eslint": "8.71.1",
     "vitest": "4.1.11"

@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "src/**"
+      - "scripts/**"
       - "tests/**"
       - "template.yaml"
       - "package.json"

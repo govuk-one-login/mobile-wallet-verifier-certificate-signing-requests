@@ -369,6 +369,15 @@ Resources:
                   - kms:Decrypt
                 Resource:
                   - !GetAtt CsrValidatedBucketKmsKey.Arn
+        - PolicyName: L3IssueRevokeOperatorS3GetValidatedBucket
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource:
+                  - !Sub "arn:aws:s3:::${CsrValidatedBucket}/*"
         - PolicyName: L3IssueRevokeOperatorS3ListReceivedAndValidatedBucket
           PolicyDocument:
             Version: "2012-10-17"
@@ -386,6 +395,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - s3:PutObject
+                  - s3:GetObject
                 Resource: !Sub
                   - "arn:aws:s3:::${BucketName}/issued/*"
                   - BucketName: !ImportValue
@@ -507,6 +517,8 @@ Resources:
         Minify: true
         Target: es2022
         Sourcemap: false
+        External:
+          - reflect-metadata
         EntryPoints:
           - src/csr-validator/handler.ts
       checkov:
@@ -564,3 +576,7 @@ Outputs:
   CsrValidatedBucketName:
     Description: Name of the S3 bucket which has validated CSRs
     Value: !Ref CsrValidatedBucket
+
+  L3IssueRevokeOperatorRoleArn:
+    Description: ARN of the L3 issue-revoke operator role assumed by the ceremony script
+    Value: !GetAtt L3IssueRevokeOperatorRole.Arn
