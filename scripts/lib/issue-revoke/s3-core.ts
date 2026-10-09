@@ -1,10 +1,9 @@
 /**
- * S3 core operations for the issue-revoke script.
- *
- * All reads and writes are in-memory — no files are written to the local
- * filesystem.  This satisfies AC1: CSRs are fetched from the csr-validated
- * bucket into memory and issued certificates are uploaded directly from
- * memory to the output S3 bucket.
+  S3 core operations for the issue-revoke script.
+  All reads and writes are in-memory — no files are written to the local
+  filesystem.  This satisfies AC1: CSRs are fetched from the csr-validated
+  bucket into memory and issued certificates are uploaded directly from
+  memory to the output S3 bucket.
  */
 import {
   S3Client,
@@ -19,8 +18,6 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { AWS_REGION, PRESIGN_EXPIRES_IN } from './constants.js';
 import { getOperatorCredentials } from './config.js';
 
-// Client factory
-
 export function createS3Client(): S3Client {
   return new S3Client({
     region: AWS_REGION,
@@ -28,12 +25,9 @@ export function createS3Client(): S3Client {
   });
 }
 
-// Download (in-memory)
+// Downloads an S3 object and returns its content as a UTF-8 string.
+// No data is written to disk.
 
-/**
- * Downloads an S3 object and returns its content as a UTF-8 string.
- * No data is written to disk.
- */
 export async function download(
   s3: S3Client,
   bucket: string,
@@ -59,12 +53,8 @@ export async function download(
   }
 }
 
-// Upload (in-memory)
+// Uploads a string body to S3 as a PEM file. No temporary files are created.
 
-/**
- * Uploads a string body to S3 as a PEM file.
- * No temporary files are created.
- */
 export async function upload(
   s3: S3Client,
   bucket: string,
@@ -81,11 +71,8 @@ export async function upload(
   );
 }
 
-// Verify
+// Verify an object exists in the bucket after upload.
 
-/**
- * Confirms an object exists in the bucket after upload.
- */
 export async function verifyPresent(
   s3: S3Client,
   bucket: string,
@@ -100,12 +87,9 @@ export async function verifyPresent(
   }
 }
 
-// List CSR files
+// Lists all `.pem` object keys under the `validated/` prefix in the csr-validated bucket.
+// Uses pagination to handle many objects.
 
-/**
- * Lists all `.pem` object keys under the `validated/` prefix in the
- * csr-validated bucket. Uses pagination to handle many objects.
- */
 export async function listCsrFiles(
   s3: S3Client,
   bucket: string,
@@ -128,12 +112,8 @@ export async function listCsrFiles(
   return keys.sort((a, b) => a.localeCompare(b));
 }
 
-// Pre-signed URLs
+// Generates a pre-signed GET URL valid for {@link PRESIGN_EXPIRES_IN} seconds (5 days).
 
-/**
- * Generates a pre-signed GET URL valid for {@link PRESIGN_EXPIRES_IN}
- * seconds (5 days).
- */
 export async function presignGetUrl(
   s3: S3Client,
   bucket: string,
