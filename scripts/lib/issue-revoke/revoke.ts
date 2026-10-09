@@ -5,7 +5,7 @@ import {
 } from '@aws-sdk/client-acm-pca';
 import { AWS_REGION, COLON_HEX_SERIAL_RE } from './constants.js';
 
-const VALID_REASONS = Object.values(RevocationReason);
+export const VALID_REASONS = Object.values(RevocationReason);
 
 export function isValidReason(
   r: string,
@@ -39,5 +39,3 @@ export async function revokeCertificate(
     }),
   );
 }
-
-export { VALID_REASONS };
