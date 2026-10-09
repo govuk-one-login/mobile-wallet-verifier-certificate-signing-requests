@@ -14,8 +14,8 @@ import {
 
 // State
 
-let caStackName: string;
-let csrStackName: string;
+let caStackName: string | undefined;
+let csrStackName: string | undefined;
 let operatorCredentials: AwsCredentialIdentity | undefined;
 
 export function setCaStackName(name: string): void {
