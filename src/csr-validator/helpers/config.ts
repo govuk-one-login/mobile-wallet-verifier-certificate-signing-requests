@@ -3,7 +3,7 @@ import {
   getRequiredEnvironmentVariables,
   MissingEnvVarError,
 } from '../../utils/environment/environment.ts';
-import { Result } from '../../utils/result/result.ts';
+import { Result, successResult } from '../../utils/result/result.ts';
 import { logger } from '../../utils/logging/logger.ts';
 import { LogMessage } from '../../utils/logging/log-message.ts';
 
@@ -11,7 +11,10 @@ const REQUIRED_ENVIRONMENT_VARIABLES = ['CSR_VALIDATED_BUCKET'] as const;
 
 export type CsrValidatorConfig = Config<
   (typeof REQUIRED_ENVIRONMENT_VARIABLES)[number]
->;
+> & {
+  NOTIFICATION_TOPIC_ARN?: string;
+  NOTIFICATION_RUNBOOK_URL?: string;
+};
 
 export function getCsrValidatorConfig(
   env: NodeJS.ProcessEnv,
@@ -24,7 +27,12 @@ export function getCsrValidatorConfig(
     logger.error(LogMessage.CSR_VALIDATOR_INVALID_CONFIG, {
       data: { missingEnvironmentVariables: envVarsResult.value.missingEnvVars },
     });
+    return envVarsResult;
   }
 
-  return envVarsResult;
+  return successResult({
+    ...envVarsResult.value,
+    NOTIFICATION_TOPIC_ARN: env.NOTIFICATION_TOPIC_ARN || undefined,
+    NOTIFICATION_RUNBOOK_URL: env.NOTIFICATION_RUNBOOK_URL || undefined,
+  });
 }

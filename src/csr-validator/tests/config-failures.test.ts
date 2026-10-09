@@ -7,6 +7,7 @@ import {
   buildS3Event,
   buildValidHandlerDependencies,
   ConsoleSpies,
+  NOTIFICATION_TOPIC_ARN,
   spyOnConsole,
   toBytes,
 } from './utils/builders.ts';
@@ -30,9 +31,17 @@ describe('Handler - Config failures', () => {
   });
 
   describe.each([
-    { scenario: 'missing', env: {} },
-    { scenario: 'empty', env: { CSR_VALIDATED_BUCKET: '' } },
-  ])('Given CSR_VALIDATED_BUCKET is $scenario', ({ env }) => {
+    {
+      scenario: 'CSR_VALIDATED_BUCKET is missing',
+      env: { NOTIFICATION_TOPIC_ARN },
+      missing: ['CSR_VALIDATED_BUCKET'],
+    },
+    {
+      scenario: 'CSR_VALIDATED_BUCKET is empty',
+      env: { CSR_VALIDATED_BUCKET: '', NOTIFICATION_TOPIC_ARN },
+      missing: ['CSR_VALIDATED_BUCKET'],
+    },
+  ])('Given $scenario', ({ env, missing }) => {
     beforeEach(async () => {
       dependencies.env = env;
       try {
@@ -42,25 +51,26 @@ describe('Handler - Config failures', () => {
       }
     });
 
-    it('logs INVALID_CONFIG', () => {
+    it('logs INVALID_CONFIG with the missing variables', () => {
       expect(consoleSpies.error).toHaveBeenCalledWithLogFields({
         messageCode: 'CSR_VALIDATOR_INVALID_CONFIG',
         data: {
-          missingEnvironmentVariables: ['CSR_VALIDATED_BUCKET'],
+          missingEnvironmentVariables: missing,
         },
       });
     });
 
-    it('throws an error', () => {
+    it('throws an error naming the missing variables', () => {
       expect(lambdaError).toBeDefined();
       expect(lambdaError!.message).toBe(
-        'Config validation failed: missing CSR_VALIDATED_BUCKET',
+        `Config validation failed: missing ${missing.join(', ')}`,
       );
     });
 
-    it('reads and writes nothing', () => {
+    it('reads, writes, and notifies nothing', () => {
       expect(dependencies.getS3Object).not.toHaveBeenCalled();
       expect(dependencies.putS3Object).not.toHaveBeenCalled();
+      expect(dependencies.publishMessage).not.toHaveBeenCalled();
     });
   });
 });
