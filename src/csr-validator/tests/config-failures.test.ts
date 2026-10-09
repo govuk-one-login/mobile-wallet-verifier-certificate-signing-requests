@@ -7,10 +7,9 @@ import {
   buildS3Event,
   buildValidHandlerDependencies,
   ConsoleSpies,
-  SLACK_WEBHOOK_URL,
+  NOTIFICATION_TOPIC_ARN,
   spyOnConsole,
   toBytes,
-  VALIDATED_BUCKET,
 } from './utils/builders.ts';
 import '../../utils/test/matchers.ts';
 
@@ -34,23 +33,13 @@ describe('Handler - Config failures', () => {
   describe.each([
     {
       scenario: 'CSR_VALIDATED_BUCKET is missing',
-      env: { SLACK_WEBHOOK_URL },
+      env: { NOTIFICATION_TOPIC_ARN },
       missing: ['CSR_VALIDATED_BUCKET'],
     },
     {
       scenario: 'CSR_VALIDATED_BUCKET is empty',
-      env: { CSR_VALIDATED_BUCKET: '', SLACK_WEBHOOK_URL },
+      env: { CSR_VALIDATED_BUCKET: '', NOTIFICATION_TOPIC_ARN },
       missing: ['CSR_VALIDATED_BUCKET'],
-    },
-    {
-      scenario: 'SLACK_WEBHOOK_URL is missing',
-      env: { CSR_VALIDATED_BUCKET: VALIDATED_BUCKET },
-      missing: ['SLACK_WEBHOOK_URL'],
-    },
-    {
-      scenario: 'both required variables are missing',
-      env: {},
-      missing: ['CSR_VALIDATED_BUCKET', 'SLACK_WEBHOOK_URL'],
     },
   ])('Given $scenario', ({ env, missing }) => {
     beforeEach(async () => {
@@ -81,7 +70,7 @@ describe('Handler - Config failures', () => {
     it('reads, writes, and notifies nothing', () => {
       expect(dependencies.getS3Object).not.toHaveBeenCalled();
       expect(dependencies.putS3Object).not.toHaveBeenCalled();
-      expect(dependencies.postSlackMessage).not.toHaveBeenCalled();
+      expect(dependencies.publishMessage).not.toHaveBeenCalled();
     });
   });
 });

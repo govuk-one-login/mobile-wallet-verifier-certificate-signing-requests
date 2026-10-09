@@ -38,6 +38,12 @@ Parameters:
     Type: String
     Default: dvs-ca
 
+  AlertingStackName:
+    Description: |
+      The stack name of the shared alerting stack that owns the SNS topics
+    Type: String
+    Default: alerting
+
   LambdaDeploymentPreference:
     Description: |
       Specifies the configuration to enable gradual Lambda deployments. Value can be 'AllAtOnce', a default deployment config, or name of custom DeploymentConfig.
@@ -466,6 +472,19 @@ Resources:
               - Effect: Allow
                 Action: kms:GenerateDataKey
                 Resource: !GetAtt CsrValidatedBucketKmsKey.Arn
+        - PolicyName: CsrValidatorNotificationAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: sns:Publish
+                Resource: !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:${AlertingStackName}-warning"
+              - Effect: Allow
+                Action:
+                  - kms:Decrypt
+                  - kms:GenerateDataKey
+                Resource: !ImportValue
+                  Fn::Sub: "${AlertingStackName}-notification-key"
       PermissionsBoundary: !If
         - UsePermissionsBoundary
         - !Ref PermissionsBoundary
@@ -505,10 +524,7 @@ Resources:
       Environment:
         Variables:
           CSR_VALIDATED_BUCKET: !Ref CsrValidatedBucket
-          # Resolved by CloudFormation at deploy time, so the execution role
-          # needs no secretsmanager:GetSecretValue. Rotating the secret value
-          # requires a redeploy to re-resolve this reference.
-          SLACK_WEBHOOK_URL: !Sub "{{resolve:secretsmanager:${AWS::StackName}/${Environment}/slack-webhook-url}}"
+          NOTIFICATION_TOPIC_ARN: !Sub "{{resolve:ssm:/${Environment}/Alerting/WarningTopicArn}}"
       VpcConfig:
         SecurityGroupIds:
           - Fn::ImportValue: !Sub ${VpcStackName}-AWSServicesEndpointSecurityGroupId

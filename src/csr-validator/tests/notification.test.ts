@@ -14,11 +14,12 @@ import {
   buildS3Event,
   buildValidHandlerDependencies,
   ConsoleSpies,
-  postCallsOf,
+  NOTIFICATION_TOPIC_ARN,
+  publishCallsOf,
   putCallsOf,
-  SLACK_WEBHOOK_URL,
   spyOnConsole,
   toBytes,
+  VALIDATED_BUCKET,
 } from './utils/builders.ts';
 import '../../utils/test/matchers.ts';
 
@@ -50,26 +51,27 @@ describe('Handler - Outcome notification', () => {
       await handlerConstructor(dependencies, buildS3Event(), context);
     });
 
-    it('notifies Slack exactly once', () => {
-      expect(dependencies.postSlackMessage).toHaveBeenCalledOnce();
+    it('publishes to the notification topic exactly once', () => {
+      expect(dependencies.publishMessage).toHaveBeenCalledOnce();
     });
 
-    it('sends the configured webhook URL and a pass message with source and sha256', () => {
-      const [call] = postCallsOf(dependencies);
+    it('publishes to the configured topic a pass message with source and sha256', () => {
+      const [call] = publishCallsOf(dependencies);
 
-      expect(call!.webhookUrl).toBe(SLACK_WEBHOOK_URL);
-      expect(call!.message).toContain('*Original:* incoming/org.pem');
-      expect(call!.message).toContain(`*SHA-256:* ${sha256}`);
-      expect(call!.message).toContain(':white_check_mark: pass');
+      expect(call!.topicArn).toBe(NOTIFICATION_TOPIC_ARN);
+      expect(call!.subject).toBe('CSR validation passed: incoming/org.pem');
+      expect(call!.message).toContain('Original: incoming/org.pem');
+      expect(call!.message).toContain(`SHA-256: ${sha256}`);
+      expect(call!.message).toContain('Status: pass');
     });
 
-    it('notifies only after the outcome has been persisted', () => {
+    it('publishes only after the outcome has been persisted', () => {
       const putOrder = vi.mocked(dependencies.putS3Object).mock
         .invocationCallOrder;
-      const postOrder = vi.mocked(dependencies.postSlackMessage).mock
+      const publishOrder = vi.mocked(dependencies.publishMessage).mock
         .invocationCallOrder;
 
-      expect(Math.max(...putOrder)).toBeLessThan(postOrder[0]!);
+      expect(Math.max(...putOrder)).toBeLessThan(publishOrder[0]!);
     });
   });
 
@@ -81,14 +83,15 @@ describe('Handler - Outcome notification', () => {
       await handlerConstructor(dependencies, buildS3Event(), context);
     });
 
-    it('notifies Slack with a fail message', () => {
-      const [call] = postCallsOf(dependencies);
+    it('publishes a fail message', () => {
+      const [call] = publishCallsOf(dependencies);
 
-      expect(call!.message).toContain(':x: fail');
+      expect(call!.subject).toBe('CSR validation failed: incoming/org.pem');
+      expect(call!.message).toContain('Status: fail');
     });
   });
 
-  describe('Given Slack notification fails', () => {
+  describe('Given publishing the notification fails', () => {
     let pem: string;
     let sha256: string;
     let lambdaError: Error | undefined;
@@ -100,9 +103,7 @@ describe('Handler - Outcome notification', () => {
       });
       sha256 = sha256Hex(derOf(pem));
       dependencies = buildValidHandlerDependencies(toBytes(pem));
-      vi.mocked(dependencies.postSlackMessage).mockResolvedValue(
-        emptyFailure(),
-      );
+      vi.mocked(dependencies.publishMessage).mockResolvedValue(emptyFailure());
       lambdaError = undefined;
       try {
         await handlerConstructor(dependencies, buildS3Event(), context);
@@ -124,6 +125,47 @@ describe('Handler - Outcome notification', () => {
       expect(consoleSpies.info).toHaveBeenCalledWithLogFields({
         messageCode: 'CSR_VALIDATOR_COMPLETED',
         outcome: 'pass',
+      });
+    });
+  });
+
+  describe('Given no notification topic is configured', () => {
+    let pem: string;
+    let sha256: string;
+    let lambdaError: Error | undefined;
+
+    beforeEach(async () => {
+      pem = await buildCsr({
+        subject:
+          '2.5.4.5=f47ac10b-58cc-4372-a567-0e02b2c3d479, CN=DVS, OU=DVS PKI Operations, O=DVS.COM, C=GB',
+      });
+      sha256 = sha256Hex(derOf(pem));
+      dependencies = buildValidHandlerDependencies(toBytes(pem));
+      dependencies.env = { CSR_VALIDATED_BUCKET: VALIDATED_BUCKET };
+      lambdaError = undefined;
+      try {
+        await handlerConstructor(dependencies, buildS3Event(), context);
+      } catch (error: unknown) {
+        lambdaError = error as Error;
+      }
+    });
+
+    it('does not fail the record', () => {
+      expect(lambdaError).toBeUndefined();
+    });
+
+    it('still persists the validation outcome', () => {
+      expect(putCallsOf(dependencies)).toHaveLength(2);
+      expect(putCallsOf(dependencies)[0]!.key).toBe(`validated/${sha256}.json`);
+    });
+
+    it('does not publish a notification', () => {
+      expect(dependencies.publishMessage).not.toHaveBeenCalled();
+    });
+
+    it('logs that the notification was skipped', () => {
+      expect(consoleSpies.debug).toHaveBeenCalledWithLogFields({
+        messageCode: 'CSR_VALIDATOR_NOTIFY_SKIPPED',
       });
     });
   });

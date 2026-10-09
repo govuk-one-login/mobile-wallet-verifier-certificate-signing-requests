@@ -14,7 +14,7 @@ import {
 } from './handler-dependencies.ts';
 import { CsrValidatorConfig, getCsrValidatorConfig } from './helpers/config.ts';
 import { CsrSource, parseS3Record } from './helpers/parse-s3-record.ts';
-import { buildOutcome } from './helpers/build-outcome.ts';
+import { buildOutcome, ValidationOutcome } from './helpers/build-outcome.ts';
 import { buildNotification } from './helpers/build-notification.ts';
 import { writeOutcome } from './helpers/write-outcome.ts';
 
@@ -82,12 +82,25 @@ const processRecord = async (
 
   logger.info(LogMessage.CSR_VALIDATOR_COMPLETED, outcome.logFields);
 
-  // Best-effort side channel: the outcome is already persisted above, so a
-  // failed or slow notification must never fail the record or trigger a retry.
-  // postSlackMessage swallows its own errors; we ignore the Result here.
-  await dependencies.postSlackMessage({
-    webhookUrl: config.SLACK_WEBHOOK_URL,
-    message: buildNotification(source, outcome),
+  await notify(dependencies, config, source, outcome);
+};
+
+const notify = async (
+  dependencies: CsrValidatorDependencies,
+  config: CsrValidatorConfig,
+  source: CsrSource,
+  outcome: ValidationOutcome,
+): Promise<void> => {
+  if (config.NOTIFICATION_TOPIC_ARN === undefined) {
+    logger.debug(LogMessage.CSR_VALIDATOR_NOTIFY_SKIPPED);
+    return;
+  }
+
+  const notification = buildNotification(source, outcome);
+  await dependencies.publishMessage({
+    topicArn: config.NOTIFICATION_TOPIC_ARN,
+    subject: notification.subject,
+    message: notification.message,
   });
 };
 

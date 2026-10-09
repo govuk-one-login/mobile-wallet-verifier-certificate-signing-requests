@@ -77,4 +77,9 @@ export class LogMessage implements LogAttributes {
     'CSR_VALIDATOR_NOTIFY_SUCCESS',
     'Successfully sent the outcome notification.',
   );
+
+  static readonly CSR_VALIDATOR_NOTIFY_SKIPPED = new LogMessage(
+    'CSR_VALIDATOR_NOTIFY_SKIPPED',
+    'Outcome notification skipped; no notification topic is configured.',
+  );
 }
