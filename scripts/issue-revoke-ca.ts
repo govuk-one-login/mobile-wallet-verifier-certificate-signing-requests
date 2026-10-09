@@ -21,6 +21,7 @@ import { revokeCertificate, VALID_REASONS } from './lib/issue-revoke/revoke.js';
 import {
   ENVIRONMENTS,
   DEFAULT_CA_STACK_NAME,
+  DEFAULT_CSR_STACK_NAME,
   DATE_RE,
 } from './lib/issue-revoke/constants.js';
 import { createS3Client, download } from './lib/issue-revoke/s3-core.js';
@@ -232,13 +233,16 @@ async function main() {
 
     csrStackName = (
       await prompt.question(
-        styleText('bold', 'CSR CloudFormation stack name (verifier-csr): '),
+        styleText(
+          'bold',
+          `CSR CloudFormation stack name (${DEFAULT_CSR_STACK_NAME}): `,
+        ),
       )
     ).replace(/\s/g, '');
-    if (!csrStackName) csrStackName = 'verifier-csr';
+    if (!csrStackName) csrStackName = DEFAULT_CSR_STACK_NAME;
   } else {
     caStackName = DEFAULT_CA_STACK_NAME;
-    csrStackName = 'verifier-csr';
+    csrStackName = DEFAULT_CSR_STACK_NAME;
   }
 
   setCaStackName(caStackName);

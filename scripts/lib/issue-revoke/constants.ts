@@ -1,6 +1,7 @@
 export const AWS_REGION = 'eu-west-2';
 
 export const DEFAULT_CA_STACK_NAME = 'dvs-ca';
+export const DEFAULT_CSR_STACK_NAME = 'verifier-csr';
 
 export const STACK_OUTPUT_CA_ARN = 'DVSIntermediateCAArn';
 export const STACK_OUTPUT_ISSUED_CERTS_BUCKET = 'IssuedCertsBucketName';
