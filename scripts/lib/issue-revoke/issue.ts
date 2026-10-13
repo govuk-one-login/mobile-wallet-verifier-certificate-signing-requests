@@ -26,12 +26,7 @@ import {
 import { validateCsrText } from '../../../src/utils/csr-validation/validate-csr.js';
 import type { ValidationReport } from '../../../src/utils/csr-validation/types.js';
 import { getIssuedCertsBucket } from './config.js';
-import {
-  createS3Client,
-  upload,
-  verifyPresent,
-  presignGetUrl,
-} from './s3-core.js';
+import { createS3Client, upload, verifyPresent } from './s3-core.js';
 import {
   AWS_REGION,
   S3_ISSUED_PREFIX,
@@ -45,8 +40,8 @@ x509.cryptoProvider.set(webcrypto as Crypto);
 export interface IssueResult {
   certificateArn: string;
   certificateSerial: string;
-  certPresignedUrl: string;
-  chainPresignedUrl: string;
+  certificatePem: string;
+  chainPem: string;
 }
 
 // Helpers
@@ -201,17 +196,11 @@ export async function issueCertificate(
     verifyPresent(s3, bucket, chainKey),
   ]);
 
-  // 9. Generate pre-signed URLs
-  const [certPresignedUrl, chainPresignedUrl] = await Promise.all([
-    presignGetUrl(s3, bucket, certKey),
-    presignGetUrl(s3, bucket, chainKey),
-  ]);
-
   return {
     certificateArn: CertificateArn,
     certificateSerial,
-    certPresignedUrl,
-    chainPresignedUrl,
+    certificatePem: Certificate,
+    chainPem: CertificateChain,
   };
 }
 

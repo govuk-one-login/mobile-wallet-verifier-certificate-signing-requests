@@ -112,19 +112,15 @@ async function handleIssue(
     styleText('green', '✓ Certificate serial (colon-hex): ') +
       styleText('cyan', result.certificateSerial),
   );
-  console.log(
-    styleText('green', '✓ Certificate URL (5 days): ') +
-      styleText('underline', result.certPresignedUrl),
-  );
-  console.log(
-    styleText('green', '✓ Chain URL (5 days):       ') +
-      styleText('underline', result.chainPresignedUrl),
-  );
+  console.log(styleText('green', '\n✓ Certificate PEM:'));
+  console.log(result.certificatePem);
+  console.log(styleText('green', '✓ Chain PEM:'));
+  console.log(result.chainPem);
   console.log(
     styleText(
       ['bold', 'yellow'],
-      '\n⚠ Please update SNOW ticket with Certificate URL, ' +
-        'Chain URL and Serial Number above.',
+      '\n⚠ Please update SNOW ticket with Certificate, ' +
+        'Chain and Serial Number above.',
     ),
   );
 }
