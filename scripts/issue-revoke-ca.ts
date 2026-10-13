@@ -112,10 +112,14 @@ async function handleIssue(
     styleText('green', '✓ Certificate serial (colon-hex): ') +
       styleText('cyan', result.certificateSerial),
   );
-  console.log(styleText('green', '\n✓ Certificate PEM:'));
-  console.log(result.certificatePem);
-  console.log(styleText('green', '✓ Chain PEM:'));
-  console.log(result.chainPem);
+  console.log(
+    styleText('green', '✓ Certificate saved to: ') +
+      styleText('cyan', result.certPath),
+  );
+  console.log(
+    styleText('green', '✓ Chain saved to:       ') +
+      styleText('cyan', result.chainPath),
+  );
   console.log(
     styleText(
       ['bold', 'yellow'],

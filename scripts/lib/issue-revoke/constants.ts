@@ -14,6 +14,8 @@ export const SUBORDINATE_CA_TEMPLATE_ARN =
 
 export const S3_ISSUED_PREFIX = 'issued';
 
+export const CSR_OUTPUTS_DIR = 'csrs/outputs';
+
 export const PRESIGN_EXPIRES_IN = 432_000; // 5 days in seconds
 
 export const ENVIRONMENTS = [

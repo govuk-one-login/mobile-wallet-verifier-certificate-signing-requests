@@ -24,6 +24,11 @@ vi.mock('../../src/utils/csr-validation/validate-csr.js', () => ({
   validateCsrText: vi.fn(),
 }));
 
+vi.mock('node:fs/promises', () => ({
+  mkdir: vi.fn().mockResolvedValue(undefined),
+  writeFile: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock('../lib/issue-revoke/config.js', () => ({
   getIssuedCertsBucket: vi.fn(),
   getOperatorCredentials: vi.fn().mockReturnValue({
@@ -268,5 +273,7 @@ describe('issueCertificate', () => {
     expect(result.certificateSerial).toBe('aa:bb:cc:dd:11:22:33:44');
     expect(result.certificatePem).toBe(FAKE_CERT_PEM);
     expect(result.chainPem).toBe(FAKE_CHAIN_PEM);
+    expect(result.certPath).toBe('csrs/outputs/test-csr/cert.pem');
+    expect(result.chainPath).toBe('csrs/outputs/test-csr/chain.pem');
   });
 });

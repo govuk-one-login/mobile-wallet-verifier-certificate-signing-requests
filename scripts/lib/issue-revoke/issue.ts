@@ -7,7 +7,8 @@
  *   - No files are read from or written to the local filesystem.
  */
 import { webcrypto } from 'node:crypto';
-import { parse } from 'node:path';
+import { join, parse } from 'node:path';
+import { mkdir, writeFile } from 'node:fs/promises';
 import * as x509 from '@peculiar/x509';
 import { AsnConvert } from '@peculiar/asn1-schema';
 import {
@@ -30,6 +31,7 @@ import { createS3Client, upload, verifyPresent } from './s3-core.js';
 import {
   AWS_REGION,
   S3_ISSUED_PREFIX,
+  CSR_OUTPUTS_DIR,
   SUBORDINATE_CA_TEMPLATE_ARN,
 } from './constants.js';
 
@@ -42,6 +44,8 @@ export interface IssueResult {
   certificateSerial: string;
   certificatePem: string;
   chainPem: string;
+  certPath: string;
+  chainPath: string;
 }
 
 // Helpers
@@ -196,11 +200,23 @@ export async function issueCertificate(
     verifyPresent(s3, bucket, chainKey),
   ]);
 
+  // 9. Write to local output directory (gitignored)
+  const outDir = join(CSR_OUTPUTS_DIR, baseName);
+  await mkdir(outDir, { recursive: true });
+  const certPath = join(outDir, 'cert.pem');
+  const chainPath = join(outDir, 'chain.pem');
+  await Promise.all([
+    writeFile(certPath, Certificate, 'utf-8'),
+    writeFile(chainPath, CertificateChain, 'utf-8'),
+  ]);
+
   return {
     certificateArn: CertificateArn,
     certificateSerial,
     certificatePem: Certificate,
     chainPem: CertificateChain,
+    certPath,
+    chainPath,
   };
 }
 
