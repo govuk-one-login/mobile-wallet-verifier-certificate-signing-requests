@@ -16,13 +16,17 @@ import {
 } from '../lib/issue-revoke/issue.js';
 import { validateCsrText } from '../../src/utils/csr-validation/validate-csr.js';
 import { getIssuedCertsBucket } from '../lib/issue-revoke/config.js';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { VALID_CSR_PEM } from './fixtures.js';
 
 // Mocks
 
 vi.mock('../../src/utils/csr-validation/validate-csr.js', () => ({
   validateCsrText: vi.fn(),
+}));
+
+vi.mock('node:fs/promises', () => ({
+  mkdir: vi.fn().mockResolvedValue(undefined),
+  writeFile: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('../lib/issue-revoke/config.js', () => ({
@@ -110,12 +114,6 @@ vi.mock('@peculiar/asn1-x509', () => {
   };
 });
 
-vi.mock('@aws-sdk/s3-request-presigner', () => ({
-  getSignedUrl: vi
-    .fn()
-    .mockResolvedValue('https://s3.presigned.example.com/fake'),
-}));
-
 // SDK mocks
 
 const pcaMock = mockClient(ACMPCAClient);
@@ -158,10 +156,6 @@ function setupHappyPath(): void {
 
   s3Mock.on(PutObjectCommand).resolves({});
   s3Mock.on(HeadObjectCommand).resolves({});
-
-  vi.mocked(getSignedUrl)
-    .mockResolvedValueOnce('https://s3.presigned.example.com/cert.pem')
-    .mockResolvedValueOnce('https://s3.presigned.example.com/chain.pem');
 }
 
 // Setup
@@ -171,7 +165,6 @@ beforeEach(() => {
   s3Mock.reset();
   vi.mocked(validateCsrText).mockReset();
   vi.mocked(getIssuedCertsBucket).mockReset();
-  vi.mocked(getSignedUrl).mockReset();
 });
 
 // toGeneralizedTime
@@ -266,7 +259,7 @@ describe('issueCertificate', () => {
     expect(chainUpload!.args[0].input.Body).toBe(FAKE_CHAIN_PEM);
   });
 
-  it('returns certificateArn, serial, and pre-signed URLs', async () => {
+  it('returns certificateArn, serial, and PEM content', async () => {
     setupHappyPath();
 
     const result = await issueCertificate(
@@ -278,11 +271,9 @@ describe('issueCertificate', () => {
 
     expect(result.certificateArn).toBe(ISSUED_CERT_ARN);
     expect(result.certificateSerial).toBe('aa:bb:cc:dd:11:22:33:44');
-    expect(result.certPresignedUrl).toBe(
-      'https://s3.presigned.example.com/cert.pem',
-    );
-    expect(result.chainPresignedUrl).toBe(
-      'https://s3.presigned.example.com/chain.pem',
-    );
+    expect(result.certificatePem).toBe(FAKE_CERT_PEM);
+    expect(result.chainPem).toBe(FAKE_CHAIN_PEM);
+    expect(result.certPath).toBe('csrs/outputs/test-csr/cert.pem');
+    expect(result.chainPath).toBe('csrs/outputs/test-csr/chain.pem');
   });
 });

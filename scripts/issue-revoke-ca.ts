@@ -113,18 +113,18 @@ async function handleIssue(
       styleText('cyan', result.certificateSerial),
   );
   console.log(
-    styleText('green', '✓ Certificate URL (5 days): ') +
-      styleText('underline', result.certPresignedUrl),
+    styleText('green', '✓ Certificate saved to: ') +
+      styleText('cyan', result.certPath),
   );
   console.log(
-    styleText('green', '✓ Chain URL (5 days):       ') +
-      styleText('underline', result.chainPresignedUrl),
+    styleText('green', '✓ Chain saved to:       ') +
+      styleText('cyan', result.chainPath),
   );
   console.log(
     styleText(
       ['bold', 'yellow'],
-      '\n⚠ Please update SNOW ticket with Certificate URL, ' +
-        'Chain URL and Serial Number above.',
+      '\n⚠ Please update SNOW ticket with Certificate, ' +
+        'Chain and Serial Number above.',
     ),
   );
 }
