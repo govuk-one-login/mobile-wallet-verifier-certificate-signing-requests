@@ -229,6 +229,10 @@ describe('issueCertificate', () => {
       CommonName: 'Great DVS Verifier Sub-CA',
       SerialNumber: '550e8400-e29b-41d4-a716-446655440000',
     });
+
+    const keyUsage = input.ApiPassthrough?.Extensions?.KeyUsage;
+    expect(keyUsage).toEqual({ KeyCertSign: true, CRLSign: true });
+    expect(keyUsage?.DigitalSignature).toBeUndefined();
   });
 
   it('uploads cert and chain to S3 with correct keys', async () => {

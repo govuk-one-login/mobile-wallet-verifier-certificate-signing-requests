@@ -144,6 +144,10 @@ export async function issueCertificate(
           SerialNumber: subject.serialNumber,
         },
         Extensions: {
+          KeyUsage: {
+            KeyCertSign: true,
+            CRLSign: true,
+          },
           CustomExtensions: [
             {
               ObjectIdentifier: '2.5.29.30', // NameConstraints
