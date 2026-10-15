@@ -220,7 +220,7 @@ describe('issueCertificate', () => {
     });
     expect(input.TemplateArn).toBe(
       'arn:aws:acm-pca:::template/' +
-        'SubordinateCACertificate_PathLen0_APIPassthrough/V1',
+        'BlankSubordinateCACertificate_PathLen0_APIPassthrough/V1',
     );
     expect(input.ApiPassthrough?.Subject).toEqual({
       Country: 'GB',
@@ -229,6 +229,10 @@ describe('issueCertificate', () => {
       CommonName: 'Great DVS Verifier Sub-CA',
       SerialNumber: '550e8400-e29b-41d4-a716-446655440000',
     });
+
+    const keyUsage = input.ApiPassthrough?.Extensions?.KeyUsage;
+    expect(keyUsage).toEqual({ KeyCertSign: true, CRLSign: true });
+    expect(keyUsage?.DigitalSignature).toBeUndefined();
   });
 
   it('uploads cert and chain to S3 with correct keys', async () => {
