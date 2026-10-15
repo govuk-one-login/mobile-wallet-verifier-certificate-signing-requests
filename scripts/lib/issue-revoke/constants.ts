@@ -10,7 +10,7 @@ export const STACK_OUTPUT_CSR_VALIDATED_BUCKET = 'CsrValidatedBucketName';
 export const STACK_OUTPUT_OPERATOR_ROLE_ARN = 'L3IssueRevokeOperatorRoleArn';
 
 export const SUBORDINATE_CA_TEMPLATE_ARN =
-  'arn:aws:acm-pca:::template/SubordinateCACertificate_PathLen0_APIPassthrough/V1';
+  'arn:aws:acm-pca:::template/BlankSubordinateCACertificate_PathLen0_APIPassthrough/V1';
 
 export const S3_ISSUED_PREFIX = 'issued';
 

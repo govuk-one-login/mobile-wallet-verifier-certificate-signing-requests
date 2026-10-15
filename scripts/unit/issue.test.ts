@@ -220,7 +220,7 @@ describe('issueCertificate', () => {
     });
     expect(input.TemplateArn).toBe(
       'arn:aws:acm-pca:::template/' +
-        'SubordinateCACertificate_PathLen0_APIPassthrough/V1',
+        'BlankSubordinateCACertificate_PathLen0_APIPassthrough/V1',
     );
     expect(input.ApiPassthrough?.Subject).toEqual({
       Country: 'GB',
