@@ -96,6 +96,16 @@ function buildNameConstraintsB64(org: string): string {
   return Buffer.from(der).toString('base64');
 }
 
+/**
+ * Build minimally-encoded KeyUsage BIT STRING for keyCertSign + cRLSign.
+ * Apple requires minimal-length encoding with correct padding-bit count.
+ * Bits: keyCertSign=5, cRLSign=6 → byte value 0x06, 1 unused bit → DER: 03 02 01 06
+ */
+function buildKeyUsageB64(): string {
+  const der = Buffer.from([0x03, 0x02, 0x01, 0x06]);
+  return der.toString('base64');
+}
+
 // Main issuance function
 
 /**
@@ -144,11 +154,12 @@ export async function issueCertificate(
           SerialNumber: subject.serialNumber,
         },
         Extensions: {
-          KeyUsage: {
-            KeyCertSign: true,
-            CRLSign: true,
-          },
           CustomExtensions: [
+            {
+              ObjectIdentifier: '2.5.29.15', // KeyUsage
+              Critical: true,
+              Value: buildKeyUsageB64(),
+            },
             {
               ObjectIdentifier: '2.5.29.30', // NameConstraints
               Critical: true,
