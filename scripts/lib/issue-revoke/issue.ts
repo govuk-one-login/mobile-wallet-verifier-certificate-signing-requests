@@ -124,7 +124,7 @@ export async function issueCertificate(
   const { CertificateArn } = await pca.send(
     new IssueCertificateCommand({
       CertificateAuthorityArn: caArn,
-      Csr: Buffer.from(csrPem),
+      Csr: Buffer.from(csrPem).toString('base64'),
       SigningAlgorithm: 'SHA256WITHECDSA',
       Validity: {
         Value: Number(toGeneralizedTime(expiryDate)),

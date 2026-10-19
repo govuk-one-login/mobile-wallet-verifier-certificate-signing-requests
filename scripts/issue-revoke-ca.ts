@@ -4,10 +4,16 @@
  *
  * All CSR reads and certificate uploads happen in-memory via S3 — no
  * files are read from or written to the local filesystem.
+ *
+ * Also supports local-only CSR validation (no AWS required).
  */
 import 'reflect-metadata';
+import { readFile } from 'node:fs/promises';
 import { styleText } from 'node:util';
 import { createInterface } from 'node:readline/promises';
+import * as x509 from '@peculiar/x509';
+import { validateCsrText } from '../src/utils/csr-validation/validate-csr.js';
+import type { ValidationReport } from '../src/utils/csr-validation/types.js';
 import { assertRole } from './lib/issue-revoke/role-guard.js';
 import { issueCertificate } from './lib/issue-revoke/issue.js';
 import {
@@ -194,9 +200,16 @@ async function main() {
   console.log(styleText('bold', '\nSelect action:'));
   console.log(`  ${styleText('cyan', '1')}. issue`);
   console.log(`  ${styleText('cyan', '2')}. revoke`);
-  const command = ['issue', 'revoke'][
-    pickIndex(await prompt.question(styleText('bold', '\nEnter number: ')), 2)
+  console.log(`  ${styleText('cyan', '3')}. validate (local file only)`);
+  const command = ['issue', 'revoke', 'validate'][
+    pickIndex(await prompt.question(styleText('bold', '\nEnter number: ')), 3)
   ]!;
+
+  // Validate flow — no AWS required
+  if (command === 'validate') {
+    await handleValidate(prompt);
+    return;
+  }
 
   // Role assertion
   const identity = await assertRole();
@@ -256,6 +269,77 @@ async function main() {
   // Dispatch
   if (command === 'issue') await handleIssue(prompt, caArn);
   if (command === 'revoke') await handleRevoke(prompt, caArn);
+}
+
+// Validate flow (local file, no AWS)
+
+async function handleValidate(
+  prompt: ReturnType<typeof createInterface>,
+): Promise<void> {
+  const filePath = (
+    await prompt.question(styleText('bold', '\nPath to local CSR file: '))
+  ).trim();
+  prompt.close();
+
+  if (!filePath) abort('File path is required.');
+
+  const csrPem = await readFile(filePath, 'utf-8');
+  console.log(styleText('dim', '\nValidating CSR …'));
+
+  const report = await validateCsrText(csrPem);
+  printValidationReport(report, filePath, csrPem);
+}
+
+function printValidationReport(
+  report: ValidationReport,
+  label: string,
+  csrPem: string,
+): void {
+  console.log();
+  if (report.passed) {
+    console.log(styleText('green', `✓ ${label}: CSR is valid`));
+  } else {
+    console.log(
+      styleText('red', `✗ ${label}: ${report.violations.length} violation(s)`),
+    );
+    for (const v of report.violations) {
+      console.log(styleText('red', `  [${v.rule}] ${v.message}`));
+    }
+  }
+  const serialNumber = report.metadata?.subjectDn.find(
+    (attr) => attr.oid === '2.5.4.5',
+  )?.value;
+  if (serialNumber) {
+    console.log(styleText('dim', `  serialNumber: ${serialNumber}`));
+  }
+  if (report.sha256) {
+    console.log(styleText('dim', `  SHA-256: ${report.sha256}`));
+  }
+  printCsrDetails(csrPem);
+}
+
+function printCsrDetails(csrPem: string): void {
+  try {
+    const csr = new x509.Pkcs10CertificateRequest(csrPem);
+    console.log(styleText('bold', '\nCSR details:'));
+    console.log(`  Subject: ${csr.subject}`);
+    console.log(`  Algorithm: ${csr.signatureAlgorithm.name}`);
+    console.log(`  Public Key: ${csr.publicKey.algorithm.name}`);
+    if (csr.attributes.length > 0) {
+      console.log('  Attributes:');
+      for (const attr of csr.attributes) {
+        console.log(`    - ${attr.type}`);
+      }
+    }
+    if (csr.extensions.length > 0) {
+      console.log('  Extensions:');
+      for (const ext of csr.extensions) {
+        console.log(`    - ${ext.type} (critical: ${ext.critical})`);
+      }
+    }
+  } catch {
+    console.log(styleText('dim', '\nCould not parse CSR for detailed view.'));
+  }
 }
 
 try {

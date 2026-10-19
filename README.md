@@ -57,6 +57,13 @@ The script will prompt you to:
 - You select a revocation reason
 - The certificate is revoked via ACM PCA
 
+#### Validating a local CSR (no AWS required)
+
+- You provide a path to a local CSR file
+- The CSR is validated against all rules (PEM format, PKCS#10, signature, key type, DN, extensions)
+- Validation results and SHA-256 fingerprint are displayed
+- No AWS credentials or role assumption required
+
 ### Data flow
 
 ```
