@@ -121,6 +121,9 @@ const s3Mock = mockClient(S3Client);
 
 // Fixtures
 
+const KEY_USAGE_OID = '2.5.29.15';
+const KEY_CERT_SIGN_CRL_SIGN_DER = Buffer.from([0x03, 0x02, 0x01, 0x06]);
+
 const CA_ARN =
   'arn:aws:acm-pca:eu-west-2:123456789012:certificate-authority/abc';
 const CSR_FILENAME = 'test-csr.pem';
@@ -230,9 +233,23 @@ describe('issueCertificate', () => {
       SerialNumber: '550e8400-e29b-41d4-a716-446655440000',
     });
 
-    const keyUsage = input.ApiPassthrough?.Extensions?.KeyUsage;
-    expect(keyUsage).toEqual({ KeyCertSign: true, CRLSign: true });
-    expect(keyUsage?.DigitalSignature).toBeUndefined();
+    const customExts = input.ApiPassthrough?.Extensions?.CustomExtensions;
+    expect(customExts).toHaveLength(2);
+
+    const keyUsageExt = customExts?.find(
+      (e) => e.ObjectIdentifier === KEY_USAGE_OID,
+    );
+    expect(keyUsageExt).toBeDefined();
+    expect(keyUsageExt?.Critical).toBe(true);
+    expect(Buffer.from(keyUsageExt!.Value!, 'base64')).toEqual(
+      KEY_CERT_SIGN_CRL_SIGN_DER,
+    );
+
+    const nameConstraintsExt = customExts?.find(
+      (e) => e.ObjectIdentifier === '2.5.29.30',
+    );
+    expect(nameConstraintsExt).toBeDefined();
+    expect(nameConstraintsExt?.Critical).toBe(true);
   });
 
   it('uploads cert and chain to S3 with correct keys', async () => {
