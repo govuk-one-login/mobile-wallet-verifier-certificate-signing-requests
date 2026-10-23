@@ -39,7 +39,7 @@ jobs:
           ref: ${{ github.ref }}
 
       - name: Setup AWS SAM CLI
-        uses: aws-actions/setup-sam@89ddb14d60e682855e3fea4be85b3c56485de310 # v2
+        uses: aws-actions/setup-sam@341eee193f458fa5aae5d52c94b0c5cf3a1c5a52 # v2
 
       - name: SAM Validate
         run: sam validate --lint --template "$TEMPLATE_PATH" --region "$AWS_REGION"
@@ -62,7 +62,7 @@ jobs:
 
       - name: Setup Node
         if: inputs.BUILD_TEMPLATE
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           cache: npm
           cache-dependency-path: package-lock.json
