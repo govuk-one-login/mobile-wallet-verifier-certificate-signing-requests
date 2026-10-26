@@ -56,8 +56,6 @@ expect.extend({
 declare module 'vitest' {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   interface Matchers<R extends void | Promise<void>, T> {
-    toHaveBeenCalledWithLogFields: (
-      logFields: Record<string, unknown>,
-    ) => R;
+    toHaveBeenCalledWithLogFields: (logFields: Record<string, unknown>) => R;
   }
 }
