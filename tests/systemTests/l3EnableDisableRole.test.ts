@@ -40,11 +40,13 @@ const assertBucketExists = async (
       throw new Error(
         `S3 bucket "${bucket}" does not exist. ${hint} ` +
           `(authenticated against account ${AWS_ACCOUNT_ID}, region ${AWS_REGION}).`,
+        { cause: error },
       );
     }
     throw new Error(
       `Could not verify S3 bucket "${bucket}" (${name}). ${hint} ` +
         `Check your AWS credentials and that you are in the right account/region.`,
+      { cause: error },
     );
   }
 };
