@@ -17,18 +17,18 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@aws-sdk/client-acm-pca": "3.1156.0",
-    "@aws-sdk/client-cloudformation": "3.1156.0",
-    "@aws-sdk/client-s3": "3.1156.0",
-    "@aws-sdk/client-sts": "3.1156.0",
-    "@aws-sdk/s3-request-presigner": "3.1156.0",
+    "@aws-sdk/client-acm-pca": "3.1157.0",
+    "@aws-sdk/client-cloudformation": "3.1157.0",
+    "@aws-sdk/client-s3": "3.1157.0",
+    "@aws-sdk/client-sts": "3.1157.0",
+    "@aws-sdk/s3-request-presigner": "3.1157.0",
     "@aws-lambda-powertools/logger": "2.36.0",
-    "@aws-sdk/client-sns": "3.1156.0",
+    "@aws-sdk/client-sns": "3.1157.0",
     "@peculiar/asn1-csr": "2.11.0",
     "@peculiar/asn1-schema": "2.11.0",
     "@peculiar/asn1-x509": "2.11.0",
     "@peculiar/x509": "2.2.0",
-    "@smithy/node-http-handler": "4.12.1",
+    "@smithy/node-http-handler": "4.13.0",
     "esbuild": "0.28.2",
     "reflect-metadata": "0.2.2"
   },
@@ -39,7 +39,7 @@
     "uuid": "11.1.1"
   },
   "devDependencies": {
-    "@aws-sdk/client-sts": "3.1156.0",
+    "@aws-sdk/client-sts": "3.1157.0",
     "@cucumber/cucumber": "13.3.0",
     "@eslint/js": "10.0.1",
     "@types/aws-lambda": "8.10.164",
@@ -55,7 +55,7 @@
     "prettier": "3.9.10",
     "tsx": "4.23.15",
     "typescript": "6.0.3",
-    "typescript-eslint": "8.72.0",
+    "typescript-eslint": "8.72.1",
     "vite": "8.3.5",
     "vitest": "5.0.5"
   }
