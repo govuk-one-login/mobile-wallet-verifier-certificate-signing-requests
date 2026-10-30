@@ -26,7 +26,7 @@
     "@aws-sdk/client-sns": "3.1157.0",
     "@peculiar/asn1-csr": "2.11.0",
     "@peculiar/asn1-schema": "2.11.0",
-    "@peculiar/asn1-x509": "2.11.0",
+    "@peculiar/asn1-x509": "3.0.0",
     "@peculiar/x509": "2.2.0",
     "@smithy/node-http-handler": "4.13.0",
     "esbuild": "0.28.2",
