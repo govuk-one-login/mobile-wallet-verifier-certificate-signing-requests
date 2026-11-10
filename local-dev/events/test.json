@@ -1,0 +1,38 @@
+{
+  "Records": [
+    {
+      "eventVersion": "2.1",
+      "eventSource": "aws:s3",
+      "awsRegion": "eu-west-2",
+      "eventTime": "2026-10-01T12:00:00.000Z",
+      "eventName": "ObjectCreated:Put",
+      "userIdentity": {
+        "principalId": "mockPrincipalId"
+      },
+      "requestParameters": {
+        "sourceIPAddress": "127.0.0.1"
+      },
+      "responseElements": {
+        "x-amz-request-id": "mockRequestId",
+        "x-amz-id-2": "mockId2"
+      },
+      "s3": {
+        "s3SchemaVersion": "1.0",
+        "configurationId": "mockConfigurationId",
+        "bucket": {
+          "name": "673684579794-ac-csr-csr-received",
+          "ownerIdentity": {
+            "principalId": "mockPrincipalId"
+          },
+          "arn": "arn:aws:s3:::673684579794-ac-csr-csr-received"
+        },
+        "object": {
+          "key": "incoming/good.pem",
+          "size": 512,
+          "eTag": "mockETag",
+          "sequencer": "mockSequencer"
+        }
+      }
+    }
+  ]
+}
