@@ -124,7 +124,7 @@ Because the Root's only long-lived direct subordinate is the DVS Intermediate CA
 
 **Private keys of the CAs we operate never leave AWS Private CA.** That covers L1, L2 and the Test DVS Verifier CA, all created with `KeyStorageSecurityStandard: FIPS_140_2_LEVEL_3_OR_HIGHER`. AWS Private CA exposes no key-export API, and no code in any of our repositories imports or exports CA key material. The defensible claim is "no key-export path exists in the service API or in our code", not "extraction is impossible" — if you can demonstrate otherwise, that is the single highest-value finding available in this engagement. Organisation CA keys are generated and held by the partners and are outside this engagement.
 
-#### Certificate lifecycle, in outline
+#### Certificate lifecycle
 
 - **Organisation CA (L3) issuance** is a human ceremony. A CSR is uploaded to an intake S3 bucket, a Lambda (`csr-validator`) validates it against eleven rules, and an operator signed in through a specific IAM Identity Center (SSO) permission set runs a CLI (`npm run issue-revoke-ca`) that signs it through ACM PCA. Organisation CA issuance is never automatic; the pipelines do issue short-lived test CA certificates automatically (section 2.1).
 - **Issuance at L1 and at L2** is a two-operator ceremony, each run with its own CLI. At L1 the two-operator split is enforced technically for **activation**; after activation, one operator can issue from the Root alone. At L2 the pipeline principals in the Verifier account cannot sign the DVS certificate, which is signed by the Root, but we believe they can issue from, replace, disable or delete the DVS CA without an operator. Scenario 6.1 sets out both limits and asks you to confirm them.
@@ -227,8 +227,6 @@ Some of what the scenarios ask about cannot be read from inside the accounts or 
 | One operator-performed L3 issuance, to test extension handling | It requires a real issuance |  |
 
 ### 3.7 Contacts and escalation
-
-Every GDS contact below must be one NCC Group can reach directly.
 
 If you suspect a live incident rather than a test finding, follow the [GOV.UK One Login incident management process](https://team-manual.account.gov.uk/supporting-govuk-one-login/managing-incidents/#managing-incidents-for-gov-uk-one-login) and tell the engagement lead at once.
 
@@ -412,7 +410,7 @@ Sections 6.6 to 6.8 guide the review phases.
 
 ---
 
-## 6. Scenarios, review guides and expected outcomes
+## 6. Scenarios and expected outcomes
 
 This table shows where each of the Statement of Work's nine areas of concern (section 1.3) is addressed, the phases in which we expect the work to fall, what we supply for it, and its limits. The Phases column is our expectation, not a restatement of the Statement of Work's own assignment. Scenarios 6.2 and 6.5 serve areas that the Statement of Work places in the configuration review. The section 9.7 and 9.8 deny checks (scenarios 6.1 and 6.2) may run from that phase onwards. The real-ARN calls of 6.5 need both pipelines paused, so their window is booked for the scenario-driven assessment (section 1.2).
 
